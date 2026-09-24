@@ -1,0 +1,18 @@
+{
+  "id": "level05",
+  "name": "Ghost Step",
+  "hint": "Ghosts are solid from above. Record one by the wall and use it as a step.",
+  "size": { "w": 32, "h": 18 },
+  "timeLimit": 9,
+  "ghosts": 1,
+  "spawn": { "x": 3, "y": 16 },
+  "goal": { "x": 28, "y": 16 },
+  "platforms": [
+    { "x": 0, "y": 16, "w": 32, "h": 2 },
+    { "x": 15, "y": 13, "w": 2, "h": 3 }
+  ],
+  "hazards": [
+    { "x": 21, "y": 15.5, "w": 2, "h": 0.5 }
+  ],
+  "solution": [["R@14", "R20", "W5"], ["@13.2", "RJ25", "Rg", "W2", "RJ30", "Rg", "R@19.6", "RJ20", "Rg", "@28"]]
+}

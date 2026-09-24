@@ -1,0 +1,21 @@
+{
+  "name": "ghost-loop",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "GHOST LOOP - minimalist puzzle-platformer where your past attempts become ghosts.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "verify": "node scripts/verify-levels.mjs"
+  },
+  "dependencies": {
+    "phaser": "^3.90.0"
+  },
+  "devDependencies": {
+    "vite": "^7.3.6",
+    "vitest": "^3.2.7"
+  }
+}
