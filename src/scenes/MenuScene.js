@@ -7,6 +7,10 @@ import { LEVELS } from '../levels/index.js';
 import { app } from '../state.js';
 import { dateKey, dailyNumber } from '../core/daily.js';
 import { currentStreak } from '../core/save.js';
+import { totalStars } from '../core/progress.js';
+import { MAX_STARS } from '../levels/index.js';
+import { music } from '../audio/music.js';
+import { drawStar } from '../ui/ResultPanel.js';
 import { Backdrop } from '../render/Backdrop.js';
 import { drawPlayer, drawGhost, neonLine } from '../render/draw.js';
 import * as sdk from '../sdk.js';
@@ -52,28 +56,38 @@ export class MenuScene extends Phaser.Scene {
 
     const buttons = [
       makeButton(this, {
-        x: VIEW_W / 2, y: 226, w: 300, h: 58, label: firstOpen === 0 ? 'PLAY' : 'CONTINUE',
+        x: VIEW_W / 2, y: 218, w: 300, h: 56, label: firstOpen === 0 ? 'PLAY' : 'CONTINUE',
         sub: `Level ${nextIdx + 1} · ${LEVELS[nextIdx].name}`, color: COLORS.live, size: 22,
         onClick: () => go(this, 'Game', { mode: 'level', index: nextIdx })
       }),
-      makeButton(this, { x: VIEW_W / 2, y: 292, w: 300, h: 46, label: 'LEVELS', color: COLORS.live, size: 18, onClick: () => go(this, 'LevelSelect') }),
+      makeButton(this, { x: VIEW_W / 2, y: 278, w: 300, h: 44, label: 'LEVELS', color: COLORS.live, size: 17, onClick: () => go(this, 'LevelSelect') }),
       makeButton(this, {
-        x: VIEW_W / 2, y: 356, w: 300, h: 56, label: 'DAILY LOOP',
+        x: VIEW_W / 2, y: 338, w: 300, h: 54, label: 'DAILY LOOP',
         sub: `#${dailyNumber(today)}${doneToday ? ' · done ✓' : ' · new puzzle today'}${streak ? ` · streak ${streak}` : ''}`,
-        color: COLORS.ghost, size: 20, onClick: () => go(this, 'Daily')
+        color: COLORS.ghost, size: 19, onClick: () => go(this, 'Daily')
+      }),
+      makeButton(this, { x: VIEW_W / 2, y: 396, w: 300, h: 42, label: 'PROFILE', sub: null, color: COLORS.links[0], size: 15, onClick: () => go(this, 'Profile') }),
+      makeButton(this, {
+        x: VIEW_W / 2 - 76, y: 448, w: 146, h: 34, label: s.settings.muted ? 'SOUND OFF' : 'SOUND ON', color: COLORS.dim, size: 12,
+        onClick: () => buttons[4].setLabel(app.toggleMute() ? 'SOUND OFF' : 'SOUND ON')
       }),
       makeButton(this, {
-        x: VIEW_W / 2, y: 416, w: 300, h: 38, label: s.settings.muted ? 'SOUND: OFF' : 'SOUND: ON', color: COLORS.dim, size: 14,
-        onClick: () => buttons[3].setLabel(app.toggleMute() ? 'SOUND: OFF' : 'SOUND: ON')
+        x: VIEW_W / 2 + 76, y: 448, w: 146, h: 34, label: s.settings.music ? 'MUSIC ON' : 'MUSIC OFF', color: COLORS.dim, size: 12,
+        onClick: () => buttons[5].setLabel(app.toggleMusic() ? 'MUSIC ON' : 'MUSIC OFF')
       })
     ];
+    // összes csillag a jobb felső sarokban
+    const sg = this.add.graphics();
+    drawStar(sg, VIEW_W - 118, 32, 9, COLORS.links[0], true);
+    this.add.text(VIEW_W - 104, 32, `${totalStars(s)} / ${MAX_STARS}`, textStyle(15, COLORS.text, { fontStyle: 'bold' })).setOrigin(0, 0.5);
+    music.setIntensity(0);
     // gombok beúsznak
     buttons.forEach((b, i) => {
       const y = b.y;
       b.setAlpha(0).setY(y + 16);
       this.tweens.add({ targets: b, alpha: 1, y, delay: 120 + i * 70, duration: 320, ease: 'Cubic.Out' });
     });
-    const nav = new MenuNav(this, buttons);
+    const nav = new MenuNav(this, buttons, { columns: 1 });
     nav.focus(buttons[0]);
 
     const desktop = this.sys.game.device.os.desktop;

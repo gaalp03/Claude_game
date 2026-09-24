@@ -8,7 +8,7 @@ import { sfx } from '../audio/sfx.js';
  * @param opts {x, y, w, h, label, sub?, color?, onClick, disabled?, size?}
  */
 export function makeButton(scene, opts) {
-  const { x, y, w = 240, h = 48, label, sub = null, color = COLORS.live, onClick, disabled = false, size = 20 } = opts;
+  const { x, y, w = 240, h = 48, label, sub = null, color = COLORS.live, onClick, disabled = false, size = 20, markers = true } = opts;
   const c = scene.add.container(x, y);
   const glow = scene.add.graphics().setBlendMode(Phaser.BlendModes.ADD);
   const g = scene.add.graphics();
@@ -47,7 +47,7 @@ export function makeButton(scene, opts) {
     g.fillRoundedRect(-w / 2 + 4, -h / 2 + 3, w - 8, Math.min(8, h * 0.18), { tl: r - 3, tr: r - 3, bl: 2, br: 2 });
     g.lineStyle(hi ? 2 : 1.5, col, hi ? 1 : disabled ? 0.3 : 0.6);
     g.strokeRoundedRect(-w / 2, -h / 2, w, h, r);
-    if (hi) {
+    if (hi && markers) {
       // oldalsó jelölő nyilak
       g.fillStyle(col, 1);
       g.fillTriangle(-w / 2 + 10, -5, -w / 2 + 10, 5, -w / 2 + 16, 0);

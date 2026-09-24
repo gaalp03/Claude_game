@@ -2,7 +2,7 @@
 
 Minimalist neon puzzle-platformer for the browser (CrazyGames-ready). Every attempt you record comes back as a ghost that replays your exact inputs – it presses buttons, holds doors open and becomes a step for you. Solve short 8–14 second levels by layering up to three ghosts.
 
-Built with **Phaser 3** + **Vite**. No image or audio files, no network calls: everything is drawn and synthesized in code.
+Built with **Phaser 3** + **Vite**. No image or audio files, no network calls: everything is drawn and synthesized in code – including the synthwave soundtrack.
 
 ## Quick start
 
@@ -31,21 +31,23 @@ Dying or running out of time restarts the loop without recording; your ghosts ar
 
 ## Modes
 
-- **Levels** – 12 hand-made levels: 1–3 teach movement, 4–6 introduce a single ghost, 7–12 need 2–3 layered ghosts.
+- **Levels** – 24 hand-made levels in two chapters. Chapter 1 teaches movement, single ghosts, then 2–3 layered ghosts; Chapter 2 (“Paradox”) adds shuttles, crushers, lifts, bridges and timing puzzles.
+- **Stars & medals** – every level has 3 stars (clear / par ghosts / gold time) and a medal (bronze → silver → gold → **Beat the Dev**). Your personal best runs alongside you as a golden PB ghost.
+- **Profile** – 7 unlockable skins, 16 achievements and lifetime stats.
 - **Daily Loop** – a level generated from today's date (same for everyone), verified solvable by the simulation before it is served. Finish it to get a Wordle-style result to copy and share, and keep your daily streak.
 
 ## Project layout
 
 ```
 src/core/      deterministic physics, world simulation, replay, level loader, solver, daily generator, save, share
-src/levels/    level01..12.json (tile units, each with a verified solution)
+src/levels/    level01..24.json (tile units, each with a verified solution)
 src/render/    WorldView – draws the simulation
-src/scenes/    Boot, Menu, LevelSelect, Game, Daily
+src/scenes/    Boot, Menu, LevelSelect, Game, Daily, Profile
 src/ui/        HUD, touch controls, buttons, panels, theme
 src/audio/     WebAudio synth sound effects
 src/sdk.js     CrazyGames SDK call points (disabled placeholders)
 tests/         vitest suites
-scripts/       level verification / tracing / daily stats CLI tools
+scripts/       level verification, tracing, timing search (solve-timing) and daily stats CLI tools
 ```
 
 Design decisions (in Hungarian) are in [TERV.md](TERV.md).

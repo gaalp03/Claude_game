@@ -11,6 +11,8 @@ export const OUTCOME_EMOJI = {
 
 const MAX_SQUARES = 16;
 
+export const MEDAL_EMOJI = { dev: '💎', gold: '🥇', silver: '🥈', bronze: '🥉' };
+
 export function formatTime(frames) {
   return (frames / 60).toFixed(2);
 }
@@ -32,6 +34,7 @@ export function shareText(r) {
     outcomeRow(r.outcomes),
     `🔁 ${r.attempts} ${r.attempts === 1 ? 'attempt' : 'attempts'} · 👻 ${r.ghosts} ${r.ghosts === 1 ? 'ghost' : 'ghosts'} · ⏱️ ${formatTime(r.frames)}s`
   ];
+  if (r.medal && MEDAL_EMOJI[r.medal]) lines[0] += ` ${MEDAL_EMOJI[r.medal]}`;
   if (r.streak && r.streak > 1) lines.push(`🔥 ${r.streak}-day streak`);
   return lines.join('\n');
 }

@@ -6,17 +6,23 @@
 // → dinamikus alakzatok → effektek (ADD) → részecskék → szellem-sorszámok.
 
 import Phaser from 'phaser';
-import { COLORS, ghostAlpha, textStyle } from '../ui/theme.js';
+import { COLORS, ghostAlpha, textStyle, skinColor } from '../ui/theme.js';
+import { TRACK_STEP } from '../core/replay.js';
 import { drawPlayer, drawGhost, neonLine, softGlow } from './draw.js';
 
 const TRAIL_LEN = 18;
 const lerp = (a, b, t) => a + (b - a) * t;
 
 export class WorldView {
-  constructor(scene, level) {
+  /**
+   * @param opts {skin: kinézet-szín (szám vagy 'prism'), pb: legjobb futás pozíciói (lapos tömb)}
+   */
+  constructor(scene, level, { skin = COLORS.live, pb = null } = {}) {
     this.scene = scene;
     this.level = level;
     this.time = 0;
+    this.skin = skin;
+    this.pb = pb && pb.length >= 4 ? pb : null;
 
     // gomb → szín hozzárendelés (a gombok sorrendje alapján)
     this.linkColor = new Map();
@@ -48,7 +54,7 @@ export class WorldView {
       this.emitters[key] = e;
       this.root.add(e);
     };
-    mk('live', [COLORS.live, 0xffffff]);
+    mk('live', [skinColor(skin, 0), 0xffffff]);
     mk('ghost', [COLORS.ghost, 0xe0b0ff]);
     mk('hazard', [COLORS.hazard, 0xffb0c0]);
     mk('goal', [COLORS.goal, 0xffffff, COLORS.live], { speed: { min: 80, max: 420 }, lifespan: { min: 600, max: 1400 }, gravityY: 90 });
@@ -70,6 +76,9 @@ export class WorldView {
     this.root.add(this.goalStream);
 
     // szellem-sorszámok (legfeljebb 4 szellem)
+    // a legjobb futás (PB) arany körvonala és felirata
+    this.pbLabel = scene.add.text(0, 0, 'PB', textStyle(8, COLORS.links[0], { fontStyle: 'bold' })).setOrigin(0.5, 1).setVisible(false);
+    this.root.add(this.pbLabel);
     this.labels = [];
     for (let i = 0; i < 4; i++) {
       const t = scene.add.text(0, 0, String(i + 1), textStyle(10, 0xe8c8ff, { fontStyle: 'bold' })).setOrigin(0.5, 1).setVisible(false);
@@ -302,11 +311,12 @@ export class WorldView {
         this.afterimages.splice(i, 1);
         continue;
       }
-      fx.lineStyle(1.5, COLORS.live, im.a);
+      fx.lineStyle(1.5, skinColor(this.skin, t), im.a);
       fx.strokeRoundedRect(im.x, im.y, 22, 28, 5);
     }
 
     // entitások
+    this._drawPB(g, world, alpha);
     this.labels.forEach((l) => l.setVisible(false));
     for (const e of world.entities) {
       if (!e.alive) continue;
@@ -322,6 +332,12 @@ export class WorldView {
         sx = sq.sx;
         sy = sq.sy;
       }
+      // álló élő figura finoman "lélegzik"
+      if (!e.ghost && e.grounded && Math.abs(e.vx) < 0.1) {
+        const b = Math.sin(t * 3.2) * 0.035;
+        sy *= 1 + b;
+        sx *= 1 - b * 0.6;
+      }
       const w = e.w * sx;
       const h = e.h * sy;
       const bx = x + e.w / 2 - w / 2;
@@ -336,9 +352,10 @@ export class WorldView {
       } else {
         const pulse = ready ? 0.8 + 0.2 * Math.sin(t * 7) : 1;
         // árnyék-fény a talajon
-        gl.fillStyle(COLORS.live, 0.12);
+        const col = skinColor(this.skin, t);
+        gl.fillStyle(col, 0.12);
         gl.fillEllipse(x + e.w / 2, y + e.h + 1, w + 14, 6);
-        drawPlayer(g, gl, bx, by, w, h, { facing: e.facing, vx: e.vx, t, alpha: pulse });
+        drawPlayer(g, gl, bx, by, w, h, { facing: e.facing, vx: e.vx, t, alpha: pulse, color: col });
       }
     }
 
@@ -370,6 +387,29 @@ export class WorldView {
       fx.fillStyle(COLORS.ghost, 0.08 * k);
       fx.fillRect(0, 0, W, H);
     }
+  }
+
+  /** A legjobb futás arany körvonala: ugyanabban az ütemben halad, mint akkor */
+  _drawPB(g, world, alpha) {
+    if (!this.pb || world.frame === 0) {
+      this.pbLabel.setVisible(false);
+      return;
+    }
+    const n = this.pb.length / 2;
+    const f = Math.max(0, world.frame - 1 + alpha) / TRACK_STEP;
+    const i = Math.min(n - 1, Math.floor(f));
+    const j = Math.min(n - 1, i + 1);
+    const k = Math.min(1, f - i);
+    const x = lerp(this.pb[i * 2], this.pb[j * 2], k);
+    const y = lerp(this.pb[i * 2 + 1], this.pb[j * 2 + 1], k);
+    const done = f >= n - 1;
+    const a = done ? 0.25 : 0.55;
+    const gold = COLORS.links[0];
+    g.lineStyle(1.5, gold, a);
+    g.strokeRoundedRect(x, y, 22, 28, 5);
+    g.fillStyle(gold, a * 0.18);
+    g.fillRoundedRect(x, y, 22, 28, 5);
+    this.pbLabel.setVisible(true).setPosition(x + 11, y - 2).setAlpha(a + 0.2);
   }
 
   _drawGoal(g, gl, t) {

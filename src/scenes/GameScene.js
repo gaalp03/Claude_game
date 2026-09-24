@@ -5,9 +5,13 @@ import Phaser from 'phaser';
 import { createWorld } from '../core/world.js';
 import { loadLevel } from '../core/level-loader.js';
 import { STEP_MS, IN_LEFT, IN_RIGHT, IN_JUMP } from '../core/physics.js';
-import { recordLevel } from '../core/save.js';
-import { formatTime } from '../core/share.js';
-import { LEVELS } from '../levels/index.js';
+import { recordLevel, loadPB, savePB } from '../core/save.js';
+import { encodeTrack, decodeTrack, TRACK_STEP } from '../core/replay.js';
+import { starMaskFor, medalFor, recordStars, totalStars, checkAchievements, skinById, SKINS } from '../core/progress.js';
+import { LEVELS, CHAPTERS, MAX_STARS } from '../levels/index.js';
+import { showResult } from '../ui/ResultPanel.js';
+import { toast } from '../ui/Toast.js';
+import { music } from '../audio/music.js';
 import { WorldView } from '../render/WorldView.js';
 import { Backdrop } from '../render/Backdrop.js';
 import { hashString } from '../core/rng.js';
@@ -49,10 +53,16 @@ export class GameScene extends Phaser.Scene {
     this.state = 'ready';
     this.panel = null;
     this.firstLoopDone = false;
+    this.deathsThisLevel = 0;
+    this.track = [];
+    music.setIntensity(1);
 
     addCameraFX(this);
     this.backdrop = new Backdrop(this, { seed: hashString(this.level.id) });
-    this.view = new WorldView(this, this.level);
+    const levelMode = this.mode === 'level';
+    const pb = levelMode ? decodeTrack(loadPB(this.level.id)) : null;
+    const prev = levelMode ? app.save.levels[this.level.id] : null;
+    this.view = new WorldView(this, this.level, { skin: skinById(app.save.settings.skin).color, pb });
     const daily = this.mode === 'daily';
     const title = daily ? `${this.level.name}${this.practice ? ' · practice' : ''}` : this.level.name;
     const tag = daily ? 'DAILY' : String(this.levelIndex + 1).padStart(2, '0');
@@ -64,7 +74,9 @@ export class GameScene extends Phaser.Scene {
       maxGhosts: this.level.ghosts,
       hint: this.level.hint,
       hintTouch: this.level.hintTouch,
-      showKeys: desktop,
+      showKeys: desktop && (!levelMode || this.levelIndex < 6),
+      stars: levelMode ? prev?.stars || 0 : null,
+      goldFrames: levelMode ? this._goldFrames() : null,
       onPause: () => this.pause()
     });
     this.touch = new TouchControls(this, {
@@ -90,6 +102,23 @@ export class GameScene extends Phaser.Scene {
     this.hud.banner.setAlpha(0);
     this.hud.intro(daily ? 'DAILY LOOP' : `LEVEL ${tag}`, this.level.name, daily ? COLORS.ghost : COLORS.live);
     sdk.gameplayStart();
+  }
+
+  _goldFrames() {
+    return Math.ceil((this.level.devFrames * 1.25) / 6) * 6;
+  }
+
+  /** Új achievementek ellenőrzése; a feloldottakról értesítés jelenik meg */
+  _checkAchievements(extra = {}, delay = 0) {
+    // az ellenőrzés és a mentés azonnal történik, csak az értesítés késleltethető
+    const got = checkAchievements(app.save, { chapters: CHAPTERS.map((c) => c.ids), maxStars: MAX_STARS, ...extra });
+    if (!got.length) return;
+    app.persist();
+    got.forEach((a, i) => {
+      const show = () => toast(this, { title: 'ACHIEVEMENT UNLOCKED', text: a.name });
+      if (delay || i) this.time.delayedCall(delay + i * 250, show);
+      else show();
+    });
   }
 
   _setupKeyboard() {
@@ -142,6 +171,7 @@ export class GameScene extends Phaser.Scene {
     this.view.resetRound(this.world, opts);
     this.state = 'ready';
     this.acc = 0;
+    this.track = [];
     const n = this.ghosts.length;
     this.hud.hold(`LOOP ${this.attempts + 1}`, n ? `${n} ghost${n > 1 ? 's' : ''} will replay · move to start` : 'move or jump to start');
   }
@@ -166,6 +196,8 @@ export class GameScene extends Phaser.Scene {
     this.view.ghostBurst(p.x + p.w / 2, p.y + p.h / 2);
     this.ghosts.push(Uint8Array.from(this.world.liveInputs));
     this.outcomes.push('ghost');
+    app.save.stats.ghosts++;
+    this._checkAchievements();
     sfx.record();
     this.cameras.main.flash(140, 90, 30, 150);
     this.startRound({ rewind: true });
@@ -222,6 +254,7 @@ export class GameScene extends Phaser.Scene {
       if (!bits) return;
       this.state = 'play';
       this.attempts++;
+      app.save.stats.loops++;
       this.hud.clearHold();
       if (this.attempts === 2 || (this.firstLoopDone && this.level.hint)) this.hud.setHintVisible(false);
       this.firstLoopDone = true;
@@ -232,6 +265,8 @@ export class GameScene extends Phaser.Scene {
     const events = w.step(bits);
     this.view.afterStep(w);
     for (const ev of events) this._handleEvent(ev);
+    // a futás trajektóriája a PB-szellemhez
+    if ((w.frame - 1) % TRACK_STEP === 0) this.track.push(w.player.x, w.player.y);
 
     const p = w.player;
     if (p.alive && p.grounded && Math.abs(p.vx) > 1.2 && w.frame % 13 === 0) sfx.step();
@@ -271,6 +306,9 @@ export class GameScene extends Phaser.Scene {
     this.state = 'dying';
     this.pauseTimer = DEATH_PAUSE;
     this.outcomes.push('death');
+    this.deathsThisLevel++;
+    app.save.stats.deaths++;
+    if (app.save.stats.deaths % 10 === 0) this._checkAchievements();
     sfx.death();
     this.cameras.main.shake(260, 0.012);
   }
@@ -293,6 +331,9 @@ export class GameScene extends Phaser.Scene {
     sdk.gameplayStop();
     const frames = this.world.frame;
     const ghosts = this.ghosts.length;
+    this.track.push(this.world.player.x, this.world.player.y);
+    app.save.stats.wins++;
+    app.persist();
     this.time.delayedCall(850, () => {
       if (this.mode === 'daily') this._finishDaily(frames, ghosts);
       else this._showWinPanel(frames, ghosts);
@@ -300,33 +341,44 @@ export class GameScene extends Phaser.Scene {
   }
 
   _showWinPanel(frames, ghosts) {
-    const id = this.level.id;
+    const level = this.level;
+    const id = level.id;
+    const starsBefore = totalStars(app.save);
     const rec = recordLevel(app.save, id, frames, ghosts, this.attempts);
+    const mask = starMaskFor({ frames, ghosts }, level.ghosts, level.devFrames);
+    const medal = medalFor(frames, level.devFrames);
+    recordStars(app.save, id, mask, medal);
+    if (rec.newTime) savePB(id, encodeTrack(this.track));
     app.persist();
     app.levelsCompletedThisSession++;
     if (rec.firstClear) sdk.happytime();
-    const best = app.save.levels[id];
-    const underPar = ghosts <= this.level.ghosts;
-    const lines = [
-      { text: `Time  ${formatTime(frames)}s${rec.newTime && !rec.firstClear ? '   NEW BEST' : `   (best ${formatTime(best.bestFrames)}s)`}` },
-      {
-        text: `Ghosts  ${ghosts} / par ${this.level.ghosts}${underPar ? '   ★' : ''}`,
-        color: underPar ? COLORS.goal : COLORS.text
-      },
-      { text: `Loops  ${this.attempts}`, color: COLORS.dim }
-    ];
+
     const hasNext = this.levelIndex + 1 < LEVELS.length;
-    const buttons = [];
-    if (hasNext) buttons.push({ label: 'NEXT LEVEL', color: COLORS.goal, onClick: () => this._next() });
-    buttons.push({ label: 'RETRY', onClick: () => this._retryLevel() });
-    buttons.push({ label: 'LEVELS', color: COLORS.dim, onClick: () => go(this, 'LevelSelect') });
-    this.panel = showPanel(this, {
+    const nextIsNewChapter = hasNext && CHAPTERS.some((c) => c.from === this.levelIndex + 1);
+    this.panel = showResult(this, {
       title: hasNext ? 'LOOP CLOSED' : 'ALL LOOPS CLOSED',
-      color: COLORS.goal,
-      lines: hasNext ? lines : [...lines, { text: 'You finished every level. Try the Daily Loop!', color: COLORS.ghost, size: 14 }],
-      buttons,
-      back: () => go(this, 'LevelSelect')
+      frames,
+      ghosts,
+      par: level.ghosts,
+      devFrames: level.devFrames,
+      mask,
+      medal,
+      newBest: rec.newTime && !rec.firstClear,
+      bestFrames: app.save.levels[id].bestFrames,
+      nextLabel: nextIsNewChapter ? 'CHAPTER 2' : 'NEXT LEVEL',
+      onNext: hasNext ? () => this._next() : null,
+      onRetry: () => this._retryLevel(),
+      onLevels: () => go(this, 'LevelSelect')
     });
+
+    // feloldott kinézetek és achievementek
+    const starsAfter = totalStars(app.save);
+    for (const skin of SKINS) {
+      if (skin.stars > starsBefore && skin.stars <= starsAfter) {
+        this.time.delayedCall(1300, () => toast(this, { title: 'NEW SKIN UNLOCKED', text: skin.name, icon: 'skin', color: skin.color === 'prism' ? COLORS.ghost : skin.color }));
+      }
+    }
+    this._checkAchievements({ event: 'win', ghosts, deathsThisLevel: this.deathsThisLevel }, 900);
   }
 
   _next() {
@@ -367,6 +419,7 @@ export class GameScene extends Phaser.Scene {
         { label: 'RESUME', onClick: back },
         { label: 'RESTART LEVEL', onClick: () => this._retryLevel() },
         { label: muted ? 'SOUND: OFF' : 'SOUND: ON', color: COLORS.dim, onClick: () => this._toggleSoundInPanel() },
+        { label: app.save.settings.music ? 'MUSIC: ON' : 'MUSIC: OFF', color: COLORS.dim, onClick: () => this._toggleMusicInPanel() },
         this.mode === 'daily'
           ? { label: 'DAILY LOOP', color: COLORS.dim, onClick: () => go(this, 'Daily') }
           : { label: 'LEVELS', color: COLORS.dim, onClick: () => go(this, 'LevelSelect') },
@@ -380,6 +433,11 @@ export class GameScene extends Phaser.Scene {
     const m = app.toggleMute();
     const btn = this.panel.nav.buttons[2];
     btn.setLabel(m ? 'SOUND: OFF' : 'SOUND: ON');
+  }
+
+  _toggleMusicInPanel() {
+    const on = app.toggleMusic();
+    this.panel.nav.buttons[3].setLabel(on ? 'MUSIC: ON' : 'MUSIC: OFF');
   }
 
   resume() {

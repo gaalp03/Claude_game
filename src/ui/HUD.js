@@ -2,11 +2,15 @@
 import Phaser from 'phaser';
 import { COLORS, VIEW_W, VIEW_H, textStyle, ghostAlpha, hex } from './theme.js';
 import { drawGhost } from '../render/draw.js';
+import { drawStar } from './ResultPanel.js';
+import { formatTime } from '../core/share.js';
 
 const D = 40;
 
 export class HUD {
-  constructor(scene, { title, tag, par, maxGhosts, hint, hintTouch, showKeys, onPause }) {
+  constructor(scene, { title, tag, par, maxGhosts, hint, hintTouch, showKeys, onPause, stars = null, goldFrames = null }) {
+    this.stars = stars;
+    this.goldFrames = goldFrames;
     this.hintText = hint || '';
     this.hintTouch = hintTouch || hint || '';
     this.scene = scene;
@@ -54,6 +58,20 @@ export class HUD {
     // időzítő kapszula
     g.fillStyle(0x0a0b1f, 0.85);
     g.fillRoundedRect(VIEW_W / 2 - 62, 6, 124, 36, 18);
+    // a pályán eddig megszerzett csillagok a név mellett
+    if (this.stars !== null) {
+      const sx = this.title.x + this.title.width + 4;
+      for (let i = 0; i < 3; i++) {
+        const on = (this.stars >> i) & 1;
+        drawStar(g, sx + 14 + i * 15, 22, 6, on ? COLORS.links[0] : 0x4a5290, !!on, on ? 1 : 0.9);
+      }
+    }
+    // arany célidő az időzítő alatt (ha még nincs meg az idő-csillag)
+    if (this.goldFrames && !((this.stars || 0) & 4)) {
+      this.scene.add.text(VIEW_W / 2, 46, `GOLD ${formatTime(this.goldFrames)}s`, textStyle(9, COLORS.links[0], { fontStyle: 'bold', letterSpacing: 1 }))
+        .setOrigin(0.5, 0).setDepth(D + 1).setAlpha(0.8);
+      this.keys.setY(60);
+    }
   }
 
   /** Érintős módban a tipp a vezérlők közötti sávba kerül, tördelve */

@@ -44,6 +44,8 @@ scripts/       verify-levels.mjs (parancssori ellenőrzés), trace.mjs, daily-st
 - **Frissítési sorrend: mozgó elemek → ajtók → szellemek (régitől) → élő játékos → veszélyek → gombok** – ez ugyanaz a sorrend, amiben a szellem élőként futott, ezért a visszajátszás egyezik.
 - **A szellem a felvétele vége után tétlenül áll** – így ha a gombon állva nyomsz R-t, a szellem örökre nyomva tartja.
 - **A szellem inputot játszik vissza, nem pozíciót** – a feladat ezt kérte, és ettől lehetnek érdekes "paradoxonok" (ha az élő játékos megváltoztatja a világot, a szellem is máshogy mozoghat).
+- **Egyirányú platformra 4 px-en belülről is fel lehet lépni** – a mozgó komp/lift elérése így nem pixelvadászat, a meglévő pályák megoldásai változatlanul működnek.
+- **Az automatikusan járó elemek megállhatnak a végpontokon (`pause`)** – a kompra/liftre fel- és leszállásnak legyen emberi időablaka.
 - **Az ajtó nem zárhat rá senkire** – amíg valaki benne áll, nyitva marad; így nincs érthetetlen halál vagy beszorulás.
 - **A mozgó platformok egyirányúak (csak felülről)** – egyszerű, kiszámítható, és liftként így is működik.
 - **A kör az első inputtal indul ("LOOP n – move to start")** – a szellemek nem mennek el nélküled, és van idő végiggondolni a következő kört.
@@ -69,6 +71,19 @@ Mezők: `id, name, hint, size, timeLimit, ghosts (par), spawn, goal, platforms, 
 | 10 | Relay | 2 | 14 s | ajtó + lift, egymásra épülő szellemek |
 | 11 | Clockwork | 2 | 12 s | mozgó falak, "all" ajtó |
 | 12 | Ghost Loop | 3 | 13 s | ajtó + kétszintes torony |
+| **2. fejezet – Paradox** | | | | |
+| 13 | Shuttle | 1 | 12 s | magától járó komp szakadék fölött |
+| 14 | Crusher Row | 1 | 12 s | három zúzó, a szellem is átidőzít |
+| 15 | Stairway | 2 | 12 s | két szellem = két lépcsőfok |
+| 16 | Two to Tango | 2 | 12 s | „all” ajtó, egyik gomb egy másik ajtó mögött |
+| 17 | Lift Shaft | 2 | 13 s | lift + keresztbe söprő lézer, időzített gomb |
+| 18 | Hold the Bridge | 2 | 12 s | két híd, két őr, zúzó |
+| 19 | Ghost Ladder | 3 | 14 s | háromszintes szellem-létra |
+| 20 | Clock Tower | 2 | 13 s | torony + söprő akadály időzítése |
+| 21 | Paradox | 1 | 12 s | egy gomb emel ÉS zár – a szellemnek jókor kell elengednie |
+| 22 | Elevator | 2 | 13 s | magától járó lift + kétgombos ajtó fent |
+| 23 | Echo Chamber | 3 | 14 s | három gomb egyszerre + zúzó |
+| 24 | The Last Loop | 3 | 15 s | ajtó → lift → lépcső, mindenkinek dolga van |
 
 - **Minden pálya JSON-jában benne van a megoldása** (bot-tokenekben) – így a teszt minden futáskor igazolja, hogy a pálya megoldható, és egy pályamódosítás sem törheti el észrevétlenül.
 - **A szellemes pályákra "rövidítés-keresés" is fut** (jobbra futás 1–2 ugrással, minden időzítéssel, szellem nélkül) – ez kiszűri, ha egy pálya véletlenül szellem nélkül is megoldható.
@@ -77,6 +92,27 @@ Mezők: `id, name, hint, size, timeLimit, ghosts (par), spawn, goal, platforms, 
 ### A megoldás-nyelv (solver.js)
 
 `R30`/`L30`/`W30` (tartás N lépésig), `RJ20` (ugrás + irány), `Rg` (amíg földet ér), `Wo:d1` (amíg az ajtó nyílik / lift felér), `T120` (várás adott képkockáig), `@12.5` (odasétál és megáll), `R@12.5` (fut addig). **Ezek állapotfüggő vezérlők, nem fix képkockaszámok** – így a megoldások olvashatók, és a generált pályák paraméterei mellett is működnek.
+
+### Pályatervező eszközök
+
+- `npm run verify` – minden pálya betöltése és a megoldás lefuttatása.
+- `node scripts/trace.mjs levelXX` – a megoldás utolsó köre lépésenként.
+- `node scripts/solve-timing.mjs levelXX --write` – a megoldásba írt `T?` helyőrzőkre (várakozás adott képkockáig) szimulációval keres működő időzítést. **Az időzítős pályákat (zúzók, liftek) így terveztem:** a pontos képkockát a gép számolja, a pálya garantáltan megoldható marad.
+
+## Függőséget okozó rendszerek (visszatérésre ösztönzés)
+
+- **3 csillag pályánként:** teljesítés, par szellemszám, arany idő – több futásból is összegyűjthetők, így mindig van egy következő cél.
+- **Érmek a fejlesztői időhöz mérve:** bronz / ezüst (+60%) / arany (+25%) / **„Beat the Dev”** (a pályát igazoló bot ideje). A cél pontos, igazságos és mindig elérhető, hiszen a bot ugyanazzal a fizikával érte el.
+- **PB-szellem:** a legjobb futásod arany körvonalként veled fut minden körben – közvetlenül látod, hol veszítesz időt (a trajektória külön localStorage-kulcsban, kb. 1 KB/pálya).
+- **Eredménykártya:** a csillagok egyenként „pattannak be”, az idő felpörög, érem-jelvény, és kiírja a **következő elérhető célt** („finish in 5.40s for gold”); SPACE = következő pálya, R = újra.
+- **Kinézetek:** 7 karakterszín csillagokért (0 / 6 / 14 / 24 / 36 / 50 / 66), az utolsó („Prism”) szivárványos.
+- **16 achievement** felugró értesítéssel (pl. Beat the Dev, Clean Loop, Ghost Ladder, napi sorozatok).
+- **Profil-képernyő:** kinézetválasztó, achievement-lista, statisztikák (körök, szellemek, esések).
+- **HUD:** a pályanév mellett a már megszerzett csillagok, az időzítő alatt az arany célidő.
+
+## Zene
+
+**Generált synthwave (audio/music.js):** Am–F–C–G akkordmenet 104 BPM-en, lebegő pad, szűrt arpeggio visszhanggal; játék közben basszus, lábdob és cin is szól. Előretekintő ütemezéssel (25 ms-onként a következő 150 ms) pontos marad a ritmus; háttérbe tett lapon a hang szünetel; a zene külön kapcsolható.
 
 ## Daily Loop
 
@@ -150,6 +186,13 @@ Ezen felül fejlesztés közben Playwright-tal a valódi GameScene-ben is lefuto
 8. ✅ Daily Loop és megosztható eredmény
 9. ✅ Effektek, átmenetek, időkeretek hangolása
 10. ✅ SDK hívási pontok (kikapcsolva), production build
+
+## Második kör (bővítés)
+
+11. ✅ 2. fejezet: 12 új, ellenőrzötten megoldható pálya (összesen 24)
+12. ✅ Csillagok, érmek, PB-szellem, eredménykártya
+13. ✅ Kinézetek, achievementek, profil
+14. ✅ Generált zene, letisztított HUD
 
 ## Következő lépések (ötletek)
 

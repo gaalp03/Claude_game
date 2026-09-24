@@ -6,9 +6,15 @@ import { makeButton, MenuNav } from '../ui/Button.js';
 import { fadeIn, go } from '../ui/transition.js';
 import { RAW_LEVELS } from '../levels/index.js';
 import { app } from '../state.js';
+import { music } from '../audio/music.js';
 import { Backdrop } from '../render/Backdrop.js';
 import { dateKey, generateDaily } from '../core/daily.js';
 import { recordDaily, currentStreak } from '../core/save.js';
+import { medalFor, checkAchievements, MEDAL_INFO } from '../core/progress.js';
+import { loadLevel } from '../core/level-loader.js';
+import { runSolution } from '../core/solver.js';
+import { CHAPTERS, MAX_STARS } from '../levels/index.js';
+import { toast } from '../ui/Toast.js';
 import { shareText, formatTime } from '../core/share.js';
 import * as sdk from '../sdk.js';
 
@@ -59,6 +65,7 @@ export class DailyScene extends Phaser.Scene {
   create() {
     setupCamera(this);
     fadeIn(this);
+    music.setIntensity(0);
     new Backdrop(this, { seed: 99, skyline: true, dust: 18 });
     sdk.gameplayStop();
     const key = dateKey();
@@ -67,10 +74,19 @@ export class DailyScene extends Phaser.Scene {
     const s = app.save;
 
     // friss (nem gyakorló) eredmény rögzítése
+    // a napi pálya fejlesztői ideje (a generátor által igazolt megoldásból) az éremhez
+    if (!daily.devFrames) {
+      const res = runSolution(loadLevel(daily.raw), daily.raw.solution);
+      daily.devFrames = res.ok ? res.frames : 600;
+    }
+    if (this.result) this.result.medal = medalFor(this.result.frames, daily.devFrames);
     if (this.result && !this.practice) {
       const r = recordDaily(s, key, this.result);
       app.persist();
       if (r.first) sdk.happytime();
+      const got = checkAchievements(s, { chapters: CHAPTERS.map((c) => c.ids), maxStars: MAX_STARS, event: 'daily' });
+      if (got.length) app.persist();
+      got.forEach((a, i) => this.time.delayedCall(500 + i * 300, () => toast(this, { title: 'ACHIEVEMENT UNLOCKED', text: a.name })));
     }
     const today = s.daily.history[key];
     const streak = currentStreak(s, key);
@@ -94,7 +110,7 @@ export class DailyScene extends Phaser.Scene {
       this.add.text(VIEW_W / 2, 217, text, textStyle(17, COLORS.text, { align: 'center', lineSpacing: 8 })).setOrigin(0.5);
       if (this.result && this.practice) {
         this.add
-          .text(VIEW_W / 2, 306, `Practice run: ${formatTime(this.result.frames)}s · ${this.result.ghosts} ghosts · ${this.result.attempts} loops (not counted)`, textStyle(13, COLORS.dim))
+          .text(VIEW_W / 2, 306, `Practice run: ${formatTime(this.result.frames)}s · ${MEDAL_INFO[this.result.medal].name} · ${this.result.attempts} loops (not counted)`, textStyle(13, COLORS.dim))
           .setOrigin(0.5);
       }
       this.copyBtn = makeButton(this, {

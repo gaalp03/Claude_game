@@ -80,6 +80,13 @@ export function addCameraFX(scene, { bloom = false } = {}) {
   cam.postFX.addBloom(0xffffff, 1, 1, 0.8, 0.6, 2);
 }
 
+/** Kinézet színe; a "prism" folyamatosan körbejár a színkörön */
+export function skinColor(skin, t) {
+  if (skin !== 'prism') return skin;
+  const c = Phaser.Display.Color.HSVToRGB((t * 0.15) % 1, 0.75, 1);
+  return c.color;
+}
+
 /** Szellem színe/átlátszósága: a régebbiek halványabbak */
 export function ghostAlpha(index, count) {
   const age = count - 1 - index; // 0 = legújabb
