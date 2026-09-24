@@ -103,10 +103,11 @@ export function makeBot(tokens) {
 /**
  * Egy teljes megoldás lefuttatása (körök tokenlistái). Az utolsó előtti körök végén
  * rögzítünk (mint az R gomb), az utolsó körnek célba kell érnie.
- * @returns {{ok:boolean, reason?:string, ghosts:Uint8Array[], frames:number, rounds:number}}
+ * @returns {{ok:boolean, reason?:string, ghosts:Uint8Array[], frames:number, rounds:number, roundFrames?:number[]}}
  */
 export function runSolution(level, solution) {
   const ghosts = [];
+  const roundFrames = [];
   if (!solution || solution.length === 0) return { ok: false, reason: 'no solution', ghosts, frames: 0, rounds: 0 };
   for (let r = 0; r < solution.length; r++) {
     const last = r === solution.length - 1;
@@ -128,6 +129,7 @@ export function runSolution(level, solution) {
       }
       if (world.frame === 0) return { ok: false, reason: `round ${r + 1} is empty`, ghosts, frames: 0, rounds: r + 1 };
       ghosts.push(Uint8Array.from(world.liveInputs));
+      roundFrames.push(world.frame);
     } else if (world.status !== 'won') {
       const p = world.player;
       return {
@@ -138,7 +140,8 @@ export function runSolution(level, solution) {
         rounds: r + 1
       };
     } else {
-      return { ok: true, ghosts, frames: world.frame, rounds: r + 1 };
+      roundFrames.push(world.frame);
+      return { ok: true, ghosts, frames: world.frame, rounds: r + 1, roundFrames };
     }
   }
   return { ok: false, reason: 'unreachable', ghosts, frames: 0, rounds: 0 };
