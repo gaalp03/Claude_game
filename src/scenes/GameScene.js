@@ -9,10 +9,12 @@ import { recordLevel } from '../core/save.js';
 import { formatTime } from '../core/share.js';
 import { LEVELS } from '../levels/index.js';
 import { WorldView } from '../render/WorldView.js';
+import { Backdrop } from '../render/Backdrop.js';
+import { hashString } from '../core/rng.js';
 import { HUD } from '../ui/HUD.js';
 import { TouchControls, TOUCH_LAYOUT } from '../ui/TouchControls.js';
 import { showPanel } from '../ui/Panel.js';
-import { COLORS, setupCamera } from '../ui/theme.js';
+import { COLORS, setupCamera, addCameraFX } from '../ui/theme.js';
 import { fadeIn, go } from '../ui/transition.js';
 import { sfx } from '../audio/sfx.js';
 import { app } from '../state.js';
@@ -48,16 +50,20 @@ export class GameScene extends Phaser.Scene {
     this.panel = null;
     this.firstLoopDone = false;
 
+    addCameraFX(this);
+    this.backdrop = new Backdrop(this, { seed: hashString(this.level.id) });
     this.view = new WorldView(this, this.level);
-    const title = this.mode === 'daily'
-      ? `${this.level.name}${this.practice ? ' (practice)' : ''}`
-      : `${String(this.levelIndex + 1).padStart(2, '0')} · ${this.level.name}`;
+    const daily = this.mode === 'daily';
+    const title = daily ? `${this.level.name}${this.practice ? ' · practice' : ''}` : this.level.name;
+    const tag = daily ? 'DAILY' : String(this.levelIndex + 1).padStart(2, '0');
     const desktop = this.sys.game.device.os.desktop;
     this.hud = new HUD(this, {
       title,
+      tag,
       par: this.level.ghosts,
       maxGhosts: this.level.ghosts,
       hint: this.level.hint,
+      hintTouch: this.level.hintTouch,
       showKeys: desktop,
       onPause: () => this.pause()
     });
@@ -80,6 +86,9 @@ export class GameScene extends Phaser.Scene {
     this.events.once('shutdown', () => this._cleanup());
 
     this.startRound();
+    // az első körnél a nagy "LOOP 1" helyett az intró-kártya látszik, alatta a kezdési tipp
+    this.hud.banner.setAlpha(0);
+    this.hud.intro(daily ? 'DAILY LOOP' : `LEVEL ${tag}`, this.level.name, daily ? COLORS.ghost : COLORS.live);
     sdk.gameplayStart();
   }
 
@@ -112,6 +121,7 @@ export class GameScene extends Phaser.Scene {
     this.input.keyboard?.off('keydown', this._onKey);
     this.touch?.destroy();
     this.view?.destroy();
+    this.backdrop?.destroy();
   }
 
   readInput() {
@@ -127,9 +137,9 @@ export class GameScene extends Phaser.Scene {
 
   // ---------------------------------------------------------------- körök
 
-  startRound() {
+  startRound(opts = {}) {
     this.world = createWorld(this.level, this.ghosts.slice());
-    this.view.resetRound(this.world);
+    this.view.resetRound(this.world, opts);
     this.state = 'ready';
     this.acc = 0;
     const n = this.ghosts.length;
@@ -140,7 +150,7 @@ export class GameScene extends Phaser.Scene {
     if (this.state === 'won' || this.state === 'paused') return;
     if (this.state === 'play') this.outcomes.push('restart');
     sfx.restart();
-    this.startRound();
+    this.startRound({ rewind: true });
   }
 
   recordGhost() {
@@ -157,8 +167,8 @@ export class GameScene extends Phaser.Scene {
     this.ghosts.push(Uint8Array.from(this.world.liveInputs));
     this.outcomes.push('ghost');
     sfx.record();
-    this.cameras.main.flash(120, 90, 30, 140);
-    this.startRound();
+    this.cameras.main.flash(140, 90, 30, 150);
+    this.startRound({ rewind: true });
     this.hud.flash(`GHOST ${this.ghosts.length} RECORDED`, COLORS.ghost, 'it will repeat that loop exactly');
   }
 
@@ -171,7 +181,7 @@ export class GameScene extends Phaser.Scene {
     this.ghosts.pop();
     this.outcomes.push('undo');
     sfx.undo();
-    this.startRound();
+    this.startRound({ rewind: true });
     this.hud.flash('GHOST REMOVED', COLORS.dim);
   }
 
@@ -198,13 +208,13 @@ export class GameScene extends Phaser.Scene {
       ghosts: this.ghosts.length,
       loop: this.attempts + (this.state === 'ready' ? 1 : 0),
       ready: this.state === 'ready'
-    });
+    }, delta);
     this.touch.draw();
   }
 
   tick() {
     if (this.state === 'dying') {
-      if (--this.pauseTimer <= 0) this.startRound();
+      if (--this.pauseTimer <= 0) this.startRound({ rewind: true });
       return;
     }
     const bits = this.readInput();

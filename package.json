@@ -12,6 +12,8 @@
     "verify": "node scripts/verify-levels.mjs"
   },
   "dependencies": {
+    "@fontsource/exo-2": "^5.3.0",
+    "@fontsource/orbitron": "^5.3.0",
     "phaser": "^3.90.0"
   },
   "devDependencies": {

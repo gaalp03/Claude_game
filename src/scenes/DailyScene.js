@@ -6,6 +6,7 @@ import { makeButton, MenuNav } from '../ui/Button.js';
 import { fadeIn, go } from '../ui/transition.js';
 import { RAW_LEVELS } from '../levels/index.js';
 import { app } from '../state.js';
+import { Backdrop } from '../render/Backdrop.js';
 import { dateKey, generateDaily } from '../core/daily.js';
 import { recordDaily, currentStreak } from '../core/save.js';
 import { shareText, formatTime } from '../core/share.js';
@@ -58,6 +59,7 @@ export class DailyScene extends Phaser.Scene {
   create() {
     setupCamera(this);
     fadeIn(this);
+    new Backdrop(this, { seed: 99, skyline: true, dust: 18 });
     sdk.gameplayStop();
     const key = dateKey();
     this.key = key;
@@ -73,7 +75,7 @@ export class DailyScene extends Phaser.Scene {
     const today = s.daily.history[key];
     const streak = currentStreak(s, key);
 
-    this.add.text(VIEW_W / 2, 50, 'DAILY LOOP', textStyle(38, COLORS.ghost, { fontStyle: 'bold' })).setOrigin(0.5);
+    this.add.text(VIEW_W / 2, 50, 'DAILY LOOP', textStyle(38, 0xf3e3ff, { fontStyle: 'bold', glow: COLORS.ghost })).setOrigin(0.5);
     this.add.text(VIEW_W / 2, 88, `#${daily.number} · ${key}`, textStyle(15, COLORS.dim)).setOrigin(0.5);
     this.add
       .text(VIEW_W / 2, 114, `Streak ${streak}  ·  Best ${s.daily.best}`, textStyle(15, streak > 0 ? COLORS.goal : COLORS.dim, { fontStyle: 'bold' }))

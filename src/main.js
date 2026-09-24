@@ -1,5 +1,10 @@
 // Belépési pont: Phaser játék konfigurálása és a jelenetek regisztrálása.
 import Phaser from 'phaser';
+// betűk a buildbe csomagolva (csak latin karakterkészlet, kis méret)
+import '@fontsource/orbitron/latin-700.css';
+import '@fontsource/orbitron/latin-900.css';
+import '@fontsource/exo-2/latin-500.css';
+import '@fontsource/exo-2/latin-700.css';
 import { BootScene } from './scenes/BootScene.js';
 import { MenuScene } from './scenes/MenuScene.js';
 import { LevelSelectScene } from './scenes/LevelSelectScene.js';

@@ -1,3 +1,4 @@
+import Phaser from 'phaser';
 // Közös vizuális beállítások: színek, betűk, felbontás.
 
 export const VIEW_W = 960; // logikai (játék) koordináta-tér
@@ -14,10 +15,13 @@ function pickScale() {
 export const RENDER_SCALE = pickScale();
 
 export const COLORS = {
-  bg: 0x07080f,
-  grid: 0x10132a,
-  platform: 0x151a36,
-  platformEdge: 0x3d56b8,
+  bg: 0x05040f,
+  bgTop: 0x150a33,
+  bgBottom: 0x03050e,
+  grid: 0x2a2f6e,
+  platform: 0x262e70,
+  platformDark: 0x0f1236,
+  platformEdge: 0x6f8cff,
   live: 0x00f0ff,
   ghost: 0xb44cff,
   hazard: 0xff2d55,
@@ -31,17 +35,49 @@ export const COLORS = {
 
 export const hex = (c) => '#' + c.toString(16).padStart(6, '0');
 
-export const FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+// Betűk: a build része (fontsource), futás közben nincs hálózati hívás
+export const FONT = '"Exo 2", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif';
+export const FONT_DISPLAY = 'Orbitron, "Exo 2", system-ui, sans-serif';
 
-/** Szövegstílus a renderelési szorzóhoz igazított felbontással */
+/**
+ * Szövegstílus a renderelési szorzóhoz igazított felbontással.
+ * fontStyle: 'bold' → Orbitron kijelzőbetű; glow: szín → neon fény a betűk körül.
+ */
 export function textStyle(size, color = COLORS.text, extra = {}) {
-  return {
-    fontFamily: FONT,
+  const { glow, ...rest } = extra;
+  const display = rest.fontStyle === 'bold';
+  const style = {
+    fontFamily: display ? FONT_DISPLAY : FONT,
     fontSize: `${size}px`,
     color: hex(color),
     resolution: RENDER_SCALE,
-    ...extra
+    ...rest
   };
+  if (display) style.fontStyle = '700';
+  if (glow !== undefined) {
+    const blur = Math.max(6, size * 0.45);
+    style.shadow = { offsetX: 0, offsetY: 0, color: hex(glow), blur, fill: true, stroke: false };
+    // a szöveg-textúra legyen elég nagy, hogy a fény ne vágódjon le szögletesen
+    const pad = glowPad(size);
+    style.padding = { left: pad, right: pad, top: pad, bottom: pad };
+  }
+  return style;
+}
+
+/** A fénylő szöveg textúrájának kitöltése (bal/felső igazításnál ennyivel kell visszatolni) */
+export function glowPad(size) {
+  return Math.ceil(Math.max(6, size * 0.45) * 1.6);
+}
+
+/**
+ * Opcionális kamera-bloom (WebGL postFX). Alapból kikapcsolva: elmossa a szövegeket,
+ * és gyenge telefonon drága; a neon-hatást a saját ADD fényréteg adja minden eszközön.
+ */
+export function addCameraFX(scene, { bloom = false } = {}) {
+  const cam = scene.cameras.main;
+  if (!bloom || !cam.postFX || scene.sys.game.config.renderType !== Phaser.WEBGL) return;
+  if (!scene.sys.game.device.os.desktop) return;
+  cam.postFX.addBloom(0xffffff, 1, 1, 0.8, 0.6, 2);
 }
 
 /** Szellem színe/átlátszósága: a régebbiek halványabbak */

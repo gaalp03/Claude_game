@@ -2,6 +2,7 @@
   "id": "level01",
   "name": "First Steps",
   "hint": "Arrows / A D to move, Space / Up to jump. Reach the green goal.",
+  "hintTouch": "Use the arrow pads to move and JUMP to jump. Reach the green goal.",
   "size": {
     "w": 32,
     "h": 18

@@ -2,6 +2,7 @@
   "id": "level04",
   "name": "Echo",
   "hint": "Stand on the button and press R to record. Your ghost will hold it for you.",
+  "hintTouch": "Stand on the button and tap REC to record. Your ghost will hold it for you.",
   "size": {
     "w": 32,
     "h": 18

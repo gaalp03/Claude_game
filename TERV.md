@@ -89,10 +89,18 @@ Mezők: `id, name, hint, size, timeLimit, ghosts (par), spawn, goal, platforms, 
 
 ## Vizuális stílus és effektek
 
-- Sötét háttér halvány rácsa, neon színek: élő cián, szellemek lila (a régebbiek halványabbak), veszély piros, cél villogó zöld, gombok/ajtók/liftek csoportonként saját színnel és jelzőfényekkel (melyik gomb kell, melyik aktív).
+- **Háttér minden jelenetben (render/Backdrop.js):** mélylila → fekete színátmenet, két rétegű, halvány neon városkép ablakfényekkel, puha fényfoltok, lefelé erősödő rács, lebegő por (részecskék) és vignetta; így a képnek mélysége van, de a pálya elemei elől nem veszi el a figyelmet.
+- **Platformok:** színátmenetes test, pontminta, körbefutó keret és fénylő, ragyogó tető sarokjelekkel, hogy a háttér előtt élesen kiváljanak.
+- **Élő figura:** lekerekített cián test üveg-csillanással, pislogó szemekkel, amik a mozgás irányába néznek, összenyomás–nyújtással, gyors mozgásnál szellemképekkel.
+- **Szellemek:** klasszikus hullámzó aljú sziluett (első ránézésre elkülönül az élő figurától), félig átlátszó lila, a régebbiek halványabbak, fölöttük sorszám, mögöttük nyomvonal.
+- **Cél:** villogó zöld kapu forgó gyémánttal, az ég felé mutató fénysugárral és felszálló szikrákkal, így a pálya bármely pontjáról látszik, merre kell menni.
+- **Veszély:** tüskék háromszínű fogakkal és vörös derengéssel, a mozgó falakon csúszó figyelmeztető csíkok.
+- **Gombok, ajtók, liftek:** csoportonként saját szín, energiamező-ajtók mozgó csíkokkal és jelzőfényekkel, lenyomott gombnál fénysugár, a lift irányát chevronok mutatják.
+- **Effektek:** részecskék és lökéshullám-gyűrűk halálnál, célba érésnél és rögzítésnél, "visszatekerés" (lila pásztázó sávok) minden új körnél, kamera-remegés és -villanás, pálya-intró kártya.
+- **Betűk:** Orbitron a címekhez és számokhoz, Exo 2 a szöveghez (@fontsource, a buildbe csomagolva, ~50 KB), neon fénnyel.
 - **Minden alakzat kódból (Graphics), a részecske-textúra is futásidőben generált 6×6-os négyzet** – nincs külső kép, a build kicsi.
-- **Felvillanás helyett additív "glow" réteg** (nagyobb, halvány alakzat ADD keveréssel) – ugyanaz a hatás, mint a shader-glow, de gyenge telefonon is olcsó.
-- Effektek: részecskék célba érésnél, halálnál, szellem rögzítésénél, ugrás/landolás porfelhő, összenyomás–nyújtás, kamera-remegés, szellem-nyomvonal, áttűnések.
+- **Bloom helyett saját additív (ADD) fényréteg** – a kamera-bloom elmosta a szövegeket és gyenge telefonon drága, az ADD-glow mindenhol olcsó és éles marad.
+- **Színátmenet csak téglalapon** – WebGL-ben a lekerekített alakzatokon a színátmenet átlós hibát rajzol, ezért ott rétegezett sima kitöltés van.
 - **Belső 2× felbontás nagy kijelzőn, 1× kicsin** – asztalon éles a vektoros kép, olcsó telefonon nem pazaroljuk a kitöltési sebességet.
 
 ## Vezérlés

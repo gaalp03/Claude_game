@@ -2,6 +2,7 @@
 // ugrás-, rögzítés- és visszavonás-gomb. Több ujjas érintést is kezel: minden
 // képkockán végignézzük az aktív pointereket, melyik zónában vannak.
 
+import Phaser from 'phaser';
 import { COLORS, VIEW_W, VIEW_H, textStyle } from './theme.js';
 import { IN_LEFT, IN_RIGHT, IN_JUMP } from '../core/physics.js';
 import { sfx } from '../audio/sfx.js';
@@ -15,6 +16,7 @@ export class TouchControls {
     this.scene = scene;
     this.onVisible = onVisible;
     this.visible = false;
+    this.glow = scene.add.graphics().setDepth(50).setBlendMode(Phaser.BlendModes.ADD);
     this.g = scene.add.graphics().setDepth(50);
     this.labels = [];
     this.buttons = [
@@ -43,6 +45,7 @@ export class TouchControls {
       const wp = scene.cameras.main.getWorldPoint(p.x, p.y);
       const hit = this._buttonAt(wp.x, wp.y);
       if (hit && hit.id === 'jump') this.jumpLatch = true;
+      if (hit) hit.flash = 1;
       if (hit && hit.action) hit.action();
     };
     scene.input.on('pointerdown', this.onDown);
@@ -54,6 +57,7 @@ export class TouchControls {
     this.visible = v;
     this.onVisible && this.onVisible(v);
     this.g.setVisible(v);
+    this.glow.setVisible(v);
     this.labels.forEach((l) => l.setVisible(v));
   }
 
@@ -99,32 +103,52 @@ export class TouchControls {
   draw() {
     if (!this.visible) return;
     const g = this.g;
+    const gl = this.glow;
     g.clear();
+    gl.clear();
+    // mozgás-zónák: üveg-panel, neon keret, chevron nyíl
     for (const z of this.zones) {
       const on = this.pressed.has(z.id);
-      g.fillStyle(COLORS.live, on ? 0.18 : 0.06);
-      g.fillRoundedRect(z.x + 8, z.y, z.w - 16, z.h - 10, 14);
-      g.lineStyle(2, COLORS.live, on ? 0.7 : 0.25);
-      g.strokeRoundedRect(z.x + 8, z.y, z.w - 16, z.h - 10, 14);
-      // nyíl
+      const x = z.x + 8;
+      const w = z.w - 16;
+      const h = z.h - 10;
+      g.fillStyle(0x0b0d22, on ? 0.75 : 0.55);
+      g.fillRoundedRect(x, z.y, w, h, 16);
+      g.fillStyle(COLORS.live, on ? 0.22 : 0.05);
+      g.fillRoundedRect(x, z.y, w, h, 16);
+      g.lineStyle(on ? 2.5 : 1.5, COLORS.live, on ? 1 : 0.4);
+      g.strokeRoundedRect(x, z.y, w, h, 16);
+      if (on) {
+        gl.lineStyle(10, COLORS.live, 0.12);
+        gl.strokeRoundedRect(x, z.y, w, h, 16);
+      }
       const cx = z.x + z.w / 2;
-      const cy = z.y + (z.h - 10) / 2;
+      const cy = z.y + h / 2;
       const d = z.id === 'left' ? -1 : 1;
-      g.fillStyle(COLORS.live, on ? 0.9 : 0.45);
-      g.fillTriangle(cx + d * 18, cy, cx - d * 12, cy - 20, cx - d * 12, cy + 20);
+      g.lineStyle(5, COLORS.live, on ? 1 : 0.6);
+      g.lineBetween(cx - d * 8, cy - 16, cx + d * 8, cy);
+      g.lineBetween(cx + d * 8, cy, cx - d * 8, cy + 16);
     }
+    // körgombok
     for (const b of this.buttons) {
-      const on = this.pressed.has(b.id);
-      g.fillStyle(b.color, on ? 0.3 : 0.1);
+      b.flash = Math.max(0, (b.flash || 0) - 0.08);
+      const on = this.pressed.has(b.id) || b.flash > 0;
+      const k = this.pressed.has(b.id) ? 1 : b.flash;
+      g.fillStyle(0x0b0d22, 0.6);
       g.fillCircle(b.x, b.y, b.r);
-      g.lineStyle(2, b.color, on ? 0.9 : 0.45);
+      g.fillStyle(b.color, 0.1 + 0.25 * k);
+      g.fillCircle(b.x, b.y, b.r);
+      g.lineStyle(on ? 2.5 : 1.5, b.color, on ? 1 : 0.55);
       g.strokeCircle(b.x, b.y, b.r);
+      gl.lineStyle(8, b.color, 0.06 + 0.14 * k);
+      gl.strokeCircle(b.x, b.y, b.r + 2);
     }
   }
 
   destroy() {
     this.scene.input.off('pointerdown', this.onDown);
     this.g.destroy();
+    this.glow.destroy();
     this.labels.forEach((l) => l.destroy());
   }
 }

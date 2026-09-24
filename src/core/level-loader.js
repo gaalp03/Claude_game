@@ -163,6 +163,7 @@ export function loadLevel(raw) {
     id,
     name: raw.name,
     hint: typeof raw.hint === 'string' ? raw.hint : '',
+    hintTouch: typeof raw.hintTouch === 'string' ? raw.hintTouch : null,
     cols: size.w,
     rows: size.h,
     width: W,

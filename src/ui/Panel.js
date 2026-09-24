@@ -1,4 +1,5 @@
 // Felugró panel (szünet, eredmény): áttetsző háttér, cím, sorok, gombok.
+import Phaser from 'phaser';
 import { COLORS, VIEW_W, VIEW_H, textStyle, hex } from './theme.js';
 import { makeButton, MenuNav } from './Button.js';
 
@@ -16,14 +17,24 @@ export function showPanel(scene, opts) {
   const lineH = lines.reduce((s, l) => s + (l.size || 16) + 10, 0);
   const h = 90 + lineH + buttons.length * 58;
   const top = VIEW_H / 2 - h / 2;
+  const left = VIEW_W / 2 - width / 2;
+  const glow = scene.add.graphics().setDepth(D).setBlendMode(Phaser.BlendModes.ADD);
+  for (let i = 4; i >= 1; i--) {
+    glow.lineStyle(2 + i * 5, color, 0.05);
+    glow.strokeRoundedRect(left - i, top - i, width + i * 2, h + i * 2, 16 + i);
+  }
   const g = scene.add.graphics().setDepth(D);
-  g.fillStyle(COLORS.panel, 0.97);
-  g.fillRoundedRect(VIEW_W / 2 - width / 2, top, width, h, 14);
-  g.lineStyle(2, color, 0.8);
-  g.strokeRoundedRect(VIEW_W / 2 - width / 2, top, width, h, 14);
-  objs.push(g);
+  g.fillStyle(0x080a1c, 0.97);
+  g.fillRoundedRect(left, top, width, h, 16);
+  g.fillStyle(color, 0.07);
+  g.fillRoundedRect(left + 2, top + 2, width - 4, 64, { tl: 14, tr: 14, bl: 0, br: 0 });
+  g.lineStyle(2, color, 0.9);
+  g.strokeRoundedRect(left, top, width, h, 16);
+  g.fillStyle(color, 1);
+  g.fillRect(VIEW_W / 2 - 40, top + 62, 80, 2);
+  objs.push(glow, g);
 
-  const t = scene.add.text(VIEW_W / 2, top + 36, title, textStyle(30, color, { fontStyle: 'bold' })).setOrigin(0.5).setDepth(D);
+  const t = scene.add.text(VIEW_W / 2, top + 36, title, textStyle(28, 0xffffff, { fontStyle: 'bold', glow: color })).setOrigin(0.5).setDepth(D);
   objs.push(t);
   let y = top + 76;
   for (const l of lines) {

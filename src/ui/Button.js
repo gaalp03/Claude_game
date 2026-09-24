@@ -1,4 +1,5 @@
 // Neon stílusú menügomb és billentyűzetes menü-navigáció.
+import Phaser from 'phaser';
 import { COLORS, textStyle } from './theme.js';
 import { sfx } from '../audio/sfx.js';
 
@@ -9,9 +10,10 @@ import { sfx } from '../audio/sfx.js';
 export function makeButton(scene, opts) {
   const { x, y, w = 240, h = 48, label, sub = null, color = COLORS.live, onClick, disabled = false, size = 20 } = opts;
   const c = scene.add.container(x, y);
+  const glow = scene.add.graphics().setBlendMode(Phaser.BlendModes.ADD);
   const g = scene.add.graphics();
   const t = scene.add.text(0, sub ? -8 : 0, label, textStyle(size, disabled ? COLORS.dim : COLORS.text, { fontStyle: 'bold' })).setOrigin(0.5);
-  c.add([g, t]);
+  c.add([glow, g, t]);
   let st = null;
   if (sub) {
     st = scene.add.text(0, 13, sub, textStyle(12, COLORS.dim)).setOrigin(0.5);
@@ -21,18 +23,36 @@ export function makeButton(scene, opts) {
   c.focused = false;
   c.disabled = disabled;
 
+  // üveg-panel: sötét színátmenet, neon keret, fókuszban ragyogás és jelölők
+  const r = Math.min(10, h / 2);
   const draw = () => {
     g.clear();
+    glow.clear();
     const col = disabled ? COLORS.dim : color;
     const hi = c.focused && !disabled;
     if (hi) {
-      g.fillStyle(col, 0.12);
-      g.fillRoundedRect(-w / 2 - 4, -h / 2 - 4, w + 8, h + 8, 12);
+      for (let i = 3; i >= 1; i--) {
+        glow.lineStyle(2 + i * 4, col, 0.07);
+        glow.strokeRoundedRect(-w / 2 - i, -h / 2 - i, w + i * 2, h + i * 2, r + i);
+      }
+      glow.fillStyle(col, 0.1);
+      glow.fillRoundedRect(-w / 2, -h / 2, w, h, r);
     }
-    g.fillStyle(COLORS.panel, 0.92);
-    g.fillRoundedRect(-w / 2, -h / 2, w, h, 9);
-    g.lineStyle(2, col, hi ? 1 : 0.55);
-    g.strokeRoundedRect(-w / 2, -h / 2, w, h, 9);
+    // (színátmenet csak téglalapon megy szépen WebGL-ben, ezért két réteg sima kitöltés)
+    g.fillStyle(0x0b0d22, disabled ? 0.65 : 0.94);
+    g.fillRoundedRect(-w / 2, -h / 2, w, h, r);
+    g.fillStyle(0x1a2154, disabled ? 0.2 : 0.38);
+    g.fillRoundedRect(-w / 2 + 2, -h / 2 + 2, w - 4, h * 0.5, { tl: r - 2, tr: r - 2, bl: 0, br: 0 });
+    g.fillStyle(0xffffff, hi ? 0.09 : 0.04);
+    g.fillRoundedRect(-w / 2 + 4, -h / 2 + 3, w - 8, Math.min(8, h * 0.18), { tl: r - 3, tr: r - 3, bl: 2, br: 2 });
+    g.lineStyle(hi ? 2 : 1.5, col, hi ? 1 : disabled ? 0.3 : 0.6);
+    g.strokeRoundedRect(-w / 2, -h / 2, w, h, r);
+    if (hi) {
+      // oldalsó jelölő nyilak
+      g.fillStyle(col, 1);
+      g.fillTriangle(-w / 2 + 10, -5, -w / 2 + 10, 5, -w / 2 + 16, 0);
+      g.fillTriangle(w / 2 - 10, -5, w / 2 - 10, 5, w / 2 - 16, 0);
+    }
   };
   draw();
 
