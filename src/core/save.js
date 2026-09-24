@@ -5,11 +5,15 @@ import { prevDateKey } from './daily.js';
 
 export const SAVE_KEY = 'ghostloop.save.v1';
 
+export const PB_KEY = 'ghostloop.pb.v1';
+
 export function defaultSave() {
   return {
-    levels: {}, // id → { done, bestFrames, fewestGhosts, attempts }
+    levels: {}, // id → { done, bestFrames, fewestGhosts, attempts, stars, medal }
     daily: { streak: 0, best: 0, last: null, history: {} },
-    settings: { muted: false }
+    settings: { muted: false, music: true, skin: 'neon' },
+    stats: { deaths: 0, ghosts: 0, loops: 0, wins: 0 },
+    achievements: {} // id → időbélyeg
   };
 }
 
@@ -33,6 +37,8 @@ export function loadSave(storage = safeStorage()) {
       Object.assign(data.daily, parsed.daily || {});
       data.daily.history = { ...(parsed.daily?.history || {}) };
       Object.assign(data.settings, parsed.settings || {});
+      Object.assign(data.stats, parsed.stats || {});
+      Object.assign(data.achievements, parsed.achievements || {});
     }
   } catch {
     // sérült mentés: alapértékekkel folytatjuk
@@ -94,4 +100,29 @@ export function currentStreak(data, todayKey) {
   if (!d.last) return 0;
   if (d.last === todayKey || d.last === prevDateKey(todayKey)) return d.streak;
   return 0;
+}
+
+// ---------------------------------------------------------------- legjobb futás (PB-szellem)
+// Külön kulcs alatt, hogy a fő mentés kicsi maradjon; pályánként egy kódolt trajektória.
+
+export function loadPB(id, storage = safeStorage()) {
+  if (!storage) return null;
+  try {
+    const all = JSON.parse(storage.getItem(PB_KEY) || '{}');
+    return typeof all[id] === 'string' ? all[id] : null;
+  } catch {
+    return null;
+  }
+}
+
+export function savePB(id, encoded, storage = safeStorage()) {
+  if (!storage) return false;
+  try {
+    const all = JSON.parse(storage.getItem(PB_KEY) || '{}');
+    all[id] = encoded;
+    storage.setItem(PB_KEY, JSON.stringify(all));
+    return true;
+  } catch {
+    return false;
+  }
 }

@@ -27,6 +27,8 @@ export const COYOTE_FRAMES = 6; // ennyi lépésig még lehet ugrani a perem elh
 export const JUMP_BUFFER_FRAMES = 6; // ennyi lépéssel a földet érés előtt lenyomott ugrás is érvényes
 
 const EPS = 0.01;
+// egyirányú platformra (lift, szellem) ennyi px-rel a teteje alól is "fellép" a test
+const STEP_UP = 4;
 
 /** Új test (élő játékos vagy szellem) a megadott talppontra (középső x, alsó y). */
 export function createBody(spawnX, spawnBottom) {
@@ -157,7 +159,7 @@ export function stepBody(body, bits, solids, platforms) {
     for (let i = 0; i < platforms.length; i++) {
       const p = platforms[i];
       if (body.x + body.w <= p.x || body.x >= p.x + p.w) continue;
-      if (prevBottom <= p.y + EPS && body.y + body.h >= p.y) {
+      if (prevBottom <= p.y + STEP_UP && body.y + body.h >= p.y) {
         if (best === null || p.y < best.y) best = p;
       }
     }

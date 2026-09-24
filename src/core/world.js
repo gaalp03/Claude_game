@@ -14,6 +14,23 @@ function pingPong(t) {
   return m < 1 ? m : 2 - m;
 }
 
+/**
+ * Oda-vissza mozgás helyzete [0,1]-ben, opcionális megállással a végpontokon.
+ * pause = 0 esetén pontosan a régi pingPong-ot adja (a meglévő pályák bitre egyeznek).
+ */
+function shuttle(frame, d, len) {
+  if (len <= 0) return 0;
+  if (!d.pause) return pingPong((frame * d.speed) / len + d.phase);
+  const leg = len / d.speed;
+  const hold = d.pause * 60;
+  const cycle = 2 * leg + 2 * hold;
+  const tt = (frame + d.phase * leg) % cycle;
+  if (tt < leg) return tt / leg;
+  if (tt < leg + hold) return 1;
+  if (tt < 2 * leg + hold) return 1 - (tt - leg - hold) / leg;
+  return 0;
+}
+
 export class World {
   /**
    * @param level betöltött (loadLevel) pálya
@@ -64,8 +81,7 @@ export class World {
       const ox = m.x;
       const oy = m.y;
       if (!d.buttons) {
-        const t = m.len > 0 ? pingPong((frame * d.speed) / m.len + d.phase) : 0;
-        m.dist = t * m.len;
+        m.dist = shuttle(frame, d, m.len) * m.len;
       } else {
         const active = this._linkActive(d.buttons, d.mode);
         const target = active ? m.len : 0;
@@ -81,7 +97,7 @@ export class World {
     for (const h of this.hazards) {
       const d = h.def;
       if (!d.to) continue;
-      const t = h.len > 0 ? pingPong((frame * d.speed) / h.len + d.phase) : 0;
+      const t = shuttle(frame, d, h.len);
       h.prevX = frame === 0 ? d.from.x + (d.to.x - d.from.x) * t : h.x;
       h.prevY = frame === 0 ? d.from.y + (d.to.y - d.from.y) * t : h.y;
       h.x = d.from.x + (d.to.x - d.from.x) * t;

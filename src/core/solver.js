@@ -6,7 +6,8 @@
 //   R30 / L30 / W30     jobbra / balra / semmi 30 lépésig
 //   RJ20 / LJ20 / J20   ugrás lenyomva tartva (+ irány) 20 lépésig
 //   Rg / RJg / Wg       ...amíg újra talajt nem ér
-//   Wo:d1 / Ro:d1       ...amíg a "d1" ajtó nyitva nincs (vagy a "p1" platform a végén)
+//   Wo:d1 / Ro:d1       ...amíg a "d1" ajtó nyitva nincs (vagy az "m1" platform a pálya végén)
+//   Ws:m1               ...amíg az "m1" mozgó platform a kiindulási helyén nincs
 //   T120                várakozás, amíg a kör el nem éri a 120. lépést
 //   @12.5               odasétál x = 12.5-höz és megáll
 //   R@12.5 / L@12.5     fut, amíg a középpont el nem éri x = 12.5-öt (nem fékez)
@@ -42,8 +43,17 @@ function makeAction(token) {
     const id = m[3];
     return (w) => {
       const mover = w.movers.find((x) => x.def.id === id);
-      const done = mover ? mover.dist >= mover.len : w.isDoorOpen(id);
+      const done = mover ? mover.dist >= mover.len - 1 : w.isDoorOpen(id);
       return done ? null : bits;
+    };
+  }
+  if ((m = /^([LRW]?)(J?)s:(\w+)$/.exec(token))) {
+    const bits = dirBits(m[1]) | (m[2] ? IN_JUMP : 0);
+    const id = m[3];
+    return (w) => {
+      const mover = w.movers.find((x) => x.def.id === id);
+      if (!mover) throw new Error(`unknown mover "${id}"`);
+      return mover.dist <= 1 ? null : bits;
     };
   }
   if ((m = /^T(\d+)$/.exec(token))) {

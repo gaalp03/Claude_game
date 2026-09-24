@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { loadLevel, LevelError } from '../src/core/level-loader.js';
-import { RAW_LEVELS, LEVELS } from '../src/levels/index.js';
+import { RAW_LEVELS, LEVELS, CHAPTERS } from '../src/levels/index.js';
 import { TILE } from '../src/core/physics.js';
 
 const minimal = () => ({
@@ -25,8 +25,20 @@ describe('level loader', () => {
     expect(g.slice(0, 3)).toEqual([0, 0, 0]);
     expect(g.slice(3, 6)).toEqual([1, 1, 1]);
     for (const n of g.slice(6, 12)) expect(n).toBeGreaterThanOrEqual(2);
-    expect(Math.max(...g)).toBeGreaterThanOrEqual(3);
-    for (let i = 1; i < g.length; i++) expect(g[i]).toBeGreaterThanOrEqual(g[i - 1]);
+    expect(Math.max(...g.slice(0, 12))).toBeGreaterThanOrEqual(3);
+    for (let i = 1; i < 12; i++) expect(g[i]).toBeGreaterThanOrEqual(g[i - 1]);
+    // 2. fejezet: minden pálya szellemes, és a vége a legnehezebb
+    expect(LEVELS.length).toBe(24);
+    for (const n of g.slice(12)) expect(n).toBeGreaterThanOrEqual(1);
+    expect(g[23]).toBe(3);
+  });
+
+  it('every level has a developer time and belongs to a chapter', () => {
+    for (const l of LEVELS) {
+      expect(l.devFrames).toBeGreaterThan(60);
+      expect(l.devFrames).toBeLessThan(l.frameLimit);
+    }
+    expect(CHAPTERS.map((c) => c.ids.length)).toEqual([12, 12]);
   });
 
   it('time limits are 8-15 seconds', () => {

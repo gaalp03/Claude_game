@@ -51,6 +51,7 @@ class Sfx {
       }
     }
     if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
+    if (this.onUnlock) this.onUnlock();
   }
 
   _targetGain() {
@@ -58,6 +59,7 @@ class Sfx {
   }
 
   _applyGain() {
+    if (this.onGainChange) this.onGainChange();
     if (!this.master) return;
     const t = this.ctx.currentTime;
     this.master.gain.cancelScheduledValues(t);
@@ -192,6 +194,26 @@ class Sfx {
   click() {
     if (!this.ready) return;
     this._tone({ type: 'square', f0: 1000, f1: 1400, dur: 0.04, vol: 0.06 });
+  }
+
+  /** Csillag felvillanása: minden következő magasabb */
+  star(i = 0) {
+    if (!this.ready) return;
+    const f = [784, 988, 1175][i % 3];
+    this._tone({ type: 'triangle', f0: f, dur: 0.35, vol: 0.14 });
+    this._tone({ type: 'sine', f0: f * 2, dur: 0.25, vol: 0.05, at: 0.02 });
+  }
+
+  /** Érem / achievement: rövid fanfár */
+  fanfare() {
+    if (!this.ready) return;
+    [659.25, 783.99, 1046.5, 1318.5].forEach((f, i) => this._tone({ type: 'square', f0: f, dur: 0.18, vol: 0.05, at: i * 0.07 }));
+    this._tone({ type: 'triangle', f0: 1046.5, dur: 0.7, vol: 0.1, at: 0.28 });
+  }
+
+  tick() {
+    if (!this.ready) return;
+    this._tone({ type: 'square', f0: 1800, dur: 0.02, vol: 0.025 });
   }
 
   hover() {

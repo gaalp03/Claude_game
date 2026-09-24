@@ -77,6 +77,7 @@ export function loadLevel(raw) {
       out.to = { x: px(h.to.x), y: px(h.to.y) };
       out.speed = (h.speed * TILE) / STEP_HZ; // egység/s → px/lépés
       out.phase = isNum(h.phase) ? h.phase : 0;
+      out.pause = isNum(h.pause) && h.pause > 0 ? h.pause : 0;
     }
     return out;
   });
@@ -132,7 +133,8 @@ export function loadLevel(raw) {
       speed: (m.speed * TILE) / STEP_HZ,
       buttons: links,
       mode: m.mode || 'any',
-      phase: isNum(m.phase) ? m.phase : 0
+      phase: isNum(m.phase) ? m.phase : 0,
+      pause: isNum(m.pause) && m.pause > 0 ? m.pause : 0
     };
   });
 

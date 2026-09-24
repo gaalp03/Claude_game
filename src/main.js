@@ -11,6 +11,7 @@ import { LevelSelectScene } from './scenes/LevelSelectScene.js';
 import { GameScene } from './scenes/GameScene.js';
 import { DailyScene } from './scenes/DailyScene.js';
 import { VIEW_W, VIEW_H, RENDER_SCALE, COLORS } from './ui/theme.js';
+import { sfx } from './audio/sfx.js';
 
 const game = new Phaser.Game({
   type: Phaser.AUTO,
@@ -30,6 +31,13 @@ const game = new Phaser.Game({
   input: { activePointers: 4 },
   disableContextMenu: true,
   scene: [BootScene, MenuScene, LevelSelectScene, GameScene, DailyScene]
+});
+
+// háttérbe tett lapon a hang is álljon meg (a Phaser a ciklust magától szünetelteti)
+document.addEventListener('visibilitychange', () => {
+  if (!sfx.ctx) return;
+  if (document.hidden) sfx.ctx.suspend().catch(() => {});
+  else sfx.ctx.resume().catch(() => {});
 });
 
 // hibakereséshez a böngésző konzolból elérhető

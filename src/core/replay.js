@@ -66,3 +66,38 @@ export function simulateRound(createWorld, level, recordings, inputs) {
   }
   return { world, trail };
 }
+
+// ---------------------------------------------------------------- trajektória (PB-szellem)
+// A legjobb futás pozíciói minden 2. képkockán, egész pixelre kerekítve, különbségekkel
+// base36-ban kódolva (egy 5 mp-es futás kb. 1 KB).
+
+export const TRACK_STEP = 2;
+
+export function encodeTrack(points) {
+  const out = [];
+  let px = 0;
+  let py = 0;
+  for (let i = 0; i < points.length; i += 2) {
+    const x = Math.round(points[i]);
+    const y = Math.round(points[i + 1]);
+    out.push((x - px).toString(36), (y - py).toString(36));
+    px = x;
+    py = y;
+  }
+  return out.join(' ');
+}
+
+export function decodeTrack(str) {
+  if (!str) return [];
+  const parts = str.split(' ');
+  const pts = [];
+  let x = 0;
+  let y = 0;
+  for (let i = 0; i + 1 < parts.length; i += 2) {
+    x += parseInt(parts[i], 36);
+    y += parseInt(parts[i + 1], 36);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return [];
+    pts.push(x, y);
+  }
+  return pts;
+}
