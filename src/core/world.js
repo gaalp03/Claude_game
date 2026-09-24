@@ -82,6 +82,8 @@ export class World {
       const d = h.def;
       if (!d.to) continue;
       const t = h.len > 0 ? pingPong((frame * d.speed) / h.len + d.phase) : 0;
+      h.prevX = frame === 0 ? d.from.x + (d.to.x - d.from.x) * t : h.x;
+      h.prevY = frame === 0 ? d.from.y + (d.to.y - d.from.y) * t : h.y;
       h.x = d.from.x + (d.to.x - d.from.x) * t;
       h.y = d.from.y + (d.to.y - d.from.y) * t;
     }
