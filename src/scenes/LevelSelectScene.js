@@ -45,7 +45,7 @@ export class LevelSelectScene extends Phaser.Scene {
           ? 'locked'
           : rec?.done
             ? `${formatTime(rec.bestFrames)}s · ${rec.fewestGhosts} ghost${rec.fewestGhosts === 1 ? '' : 's'}${rec.fewestGhosts <= l.ghosts ? ' ★' : ''}`
-            : `par ${l.ghosts} ghost${l.ghosts === 1 ? '' : 's'} · ${l.timeLimit}s`,
+            : `${l.ghosts === 0 ? 'no ghosts' : `par ${l.ghosts} ghost${l.ghosts === 1 ? '' : 's'}`} · ${l.timeLimit}s`,
         onClick: () => go(this, 'Game', { mode: 'level', index: i })
       });
       if (rec?.done) {

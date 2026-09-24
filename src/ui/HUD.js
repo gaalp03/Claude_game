@@ -28,6 +28,12 @@ export class HUD {
     this.pauseZone.on('pointerup', () => onPause && onPause());
   }
 
+  /** Érintős módban a tipp a vezérlők közötti sávba kerül, tördelve */
+  setTouchLayout(v) {
+    this.keys.setVisible(!v);
+    this.hint.setWordWrapWidth(v ? 400 : 900).setFontSize(v ? 13 : 14).setY(v ? VIEW_H - 8 : VIEW_H - 18);
+  }
+
   setHintVisible(v) {
     this.scene.tweens.add({ targets: this.hint, alpha: v ? 0.9 : 0, duration: 300 });
   }

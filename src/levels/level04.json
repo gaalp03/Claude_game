@@ -2,16 +2,59 @@
   "id": "level04",
   "name": "Echo",
   "hint": "Stand on the button and press R to record. Your ghost will hold it for you.",
-  "size": { "w": 32, "h": 18 },
-  "timeLimit": 9,
+  "size": {
+    "w": 32,
+    "h": 18
+  },
+  "timeLimit": 8,
   "ghosts": 1,
-  "spawn": { "x": 3, "y": 16 },
-  "goal": { "x": 27, "y": 16 },
+  "spawn": {
+    "x": 3,
+    "y": 16
+  },
+  "goal": {
+    "x": 27,
+    "y": 16
+  },
   "platforms": [
-    { "x": 0, "y": 16, "w": 32, "h": 2 },
-    { "x": 20, "y": 0, "w": 1, "h": 11 }
+    {
+      "x": 0,
+      "y": 16,
+      "w": 32,
+      "h": 2
+    },
+    {
+      "x": 20,
+      "y": 0,
+      "w": 1,
+      "h": 11
+    }
   ],
-  "buttons": [{ "id": "b1", "x": 9, "y": 16, "w": 1.5 }],
-  "doors": [{ "id": "d1", "x": 20, "y": 11, "w": 1, "h": 5, "button": "b1" }],
-  "solution": [["@9.75", "W5"], ["@27"]]
+  "buttons": [
+    {
+      "id": "b1",
+      "x": 9,
+      "y": 16,
+      "w": 1.5
+    }
+  ],
+  "doors": [
+    {
+      "id": "d1",
+      "x": 20,
+      "y": 11,
+      "w": 1,
+      "h": 5,
+      "button": "b1"
+    }
+  ],
+  "solution": [
+    [
+      "@9.75",
+      "W5"
+    ],
+    [
+      "@27"
+    ]
+  ]
 }

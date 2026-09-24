@@ -6,19 +6,22 @@ import { COLORS, VIEW_W, VIEW_H, textStyle } from './theme.js';
 import { IN_LEFT, IN_RIGHT, IN_JUMP } from '../core/physics.js';
 import { sfx } from '../audio/sfx.js';
 
-const ZONE_Y = VIEW_H - 170;
+// Érintős módban a pálya kicsinyítve felül-középen van; a vezérlők a szabad sávokba kerülnek
+export const TOUCH_LAYOUT = { scale: 0.72, x: (VIEW_W - VIEW_W * 0.72) / 2, y: 26 };
+const ZONE_Y = TOUCH_LAYOUT.y + VIEW_H * TOUCH_LAYOUT.scale + 4;
 
 export class TouchControls {
-  constructor(scene, { onRecord, onUndo, onRestart }) {
+  constructor(scene, { onRecord, onUndo, onRestart, onVisible }) {
     this.scene = scene;
+    this.onVisible = onVisible;
     this.visible = false;
     this.g = scene.add.graphics().setDepth(50);
     this.labels = [];
     this.buttons = [
-      { id: 'jump', x: VIEW_W - 78, y: VIEW_H - 78, r: 54, label: 'JUMP', color: COLORS.live },
-      { id: 'rec', x: VIEW_W - 196, y: VIEW_H - 58, r: 36, label: 'REC', color: COLORS.ghost, action: onRecord },
-      { id: 'undo', x: VIEW_W - 170, y: VIEW_H - 150, r: 28, label: 'UNDO', color: COLORS.dim, action: onUndo },
-      { id: 'retry', x: VIEW_W - 78, y: VIEW_H - 182, r: 28, label: '↺', color: COLORS.dim, action: onRestart }
+      { id: 'jump', x: VIEW_W - 72, y: VIEW_H - 66, r: 56, label: 'JUMP', color: COLORS.live },
+      { id: 'rec', x: VIEW_W - 196, y: VIEW_H - 52, r: 36, label: 'REC', color: COLORS.ghost, action: onRecord },
+      { id: 'undo', x: VIEW_W - 60, y: 300, r: 30, label: 'UNDO', color: COLORS.dim, action: onUndo },
+      { id: 'retry', x: VIEW_W - 60, y: 220, r: 30, label: '↺', color: COLORS.dim, action: onRestart }
     ];
     for (const b of this.buttons) {
       const t = scene.add.text(b.x, b.y, b.label, textStyle(b.id === 'retry' ? 22 : 13, COLORS.text, { fontStyle: 'bold' }));
@@ -26,8 +29,8 @@ export class TouchControls {
       this.labels.push(t);
     }
     this.zones = [
-      { id: 'left', x: 0, y: ZONE_Y, w: 150, h: VIEW_H - ZONE_Y },
-      { id: 'right', x: 150, y: ZONE_Y, w: 150, h: VIEW_H - ZONE_Y }
+      { id: 'left', x: 0, y: ZONE_Y, w: 130, h: VIEW_H - ZONE_Y },
+      { id: 'right', x: 130, y: ZONE_Y, w: 130, h: VIEW_H - ZONE_Y }
     ];
     this.pressed = new Set();
 
@@ -49,6 +52,7 @@ export class TouchControls {
 
   setVisible(v) {
     this.visible = v;
+    this.onVisible && this.onVisible(v);
     this.g.setVisible(v);
     this.labels.forEach((l) => l.setVisible(v));
   }
@@ -72,7 +76,8 @@ export class TouchControls {
       if (!p || !p.isDown || !p.wasTouch) continue;
       const wp = cam.getWorldPoint(p.x, p.y);
       for (const z of this.zones) {
-        if (wp.x >= z.x && wp.x < z.x + z.w && wp.y >= z.y - 60) {
+        // a zónák kicsit túlnyúlnak a rajzolt területen (pontatlan hüvelykujj)
+        if (wp.x >= z.x && wp.x < z.x + z.w + (z.id === 'right' ? 40 : 0) && wp.y >= z.y - 90) {
           if (z.id === 'left') bits |= IN_LEFT;
           else bits |= IN_RIGHT;
           this.pressed.add(z.id);

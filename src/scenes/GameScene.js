@@ -10,7 +10,7 @@ import { formatTime } from '../core/share.js';
 import { LEVELS } from '../levels/index.js';
 import { WorldView } from '../render/WorldView.js';
 import { HUD } from '../ui/HUD.js';
-import { TouchControls } from '../ui/TouchControls.js';
+import { TouchControls, TOUCH_LAYOUT } from '../ui/TouchControls.js';
 import { showPanel } from '../ui/Panel.js';
 import { COLORS, setupCamera } from '../ui/theme.js';
 import { fadeIn, go } from '../ui/transition.js';
@@ -64,7 +64,12 @@ export class GameScene extends Phaser.Scene {
     this.touch = new TouchControls(this, {
       onRecord: () => this.recordGhost(),
       onUndo: () => this.undoGhost(),
-      onRestart: () => this.restartRound()
+      onRestart: () => this.restartRound(),
+      onVisible: (v) => {
+        if (v) this.view.setLayout(TOUCH_LAYOUT.scale, TOUCH_LAYOUT.x, TOUCH_LAYOUT.y);
+        else this.view.setLayout(1, 0, 0);
+        this.hud.setTouchLayout(v);
+      }
     });
 
     this._setupKeyboard();

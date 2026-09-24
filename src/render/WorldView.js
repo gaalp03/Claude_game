@@ -19,11 +19,14 @@ export class WorldView {
     this.linkColor = new Map();
     level.buttons.forEach((b, i) => this.linkColor.set(b.id, COLORS.links[i % COLORS.links.length]));
 
+    // minden pálya-elem egy konténerben: mobilon kicsinyítve, a vezérlők fölé tesszük
+    this.root = scene.add.container(0, 0);
     this.bg = scene.add.graphics();
     this.staticG = scene.add.graphics();
     this.glow = scene.add.graphics().setBlendMode(Phaser.BlendModes.ADD);
     this.dyn = scene.add.graphics();
     this.fx = scene.add.graphics().setBlendMode(Phaser.BlendModes.ADD);
+    this.root.add([this.bg, this.staticG, this.glow, this.dyn, this.fx]);
 
     this.emitters = {};
     const mk = (key, color, extra = {}) => {
@@ -39,6 +42,7 @@ export class WorldView {
         emitting: false,
         ...extra
       });
+      this.root.add(this.emitters[key]);
     };
     mk('live', COLORS.live);
     mk('ghost', COLORS.ghost);
@@ -53,12 +57,12 @@ export class WorldView {
   }
 
   destroy() {
-    for (const k of Object.keys(this.emitters)) this.emitters[k].destroy();
-    this.bg.destroy();
-    this.staticG.destroy();
-    this.glow.destroy();
-    this.dyn.destroy();
-    this.fx.destroy();
+    this.root.destroy();
+  }
+
+  /** Pálya elhelyezése a képernyőn (asztalon teljes méret, érintős módban kisebb) */
+  setLayout(scale, x, y) {
+    this.root.setScale(scale).setPosition(x, y);
   }
 
   _drawStatic() {

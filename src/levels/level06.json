@@ -6,7 +6,7 @@
     "w": 32,
     "h": 18
   },
-  "timeLimit": 11,
+  "timeLimit": 12,
   "ghosts": 1,
   "spawn": {
     "x": 3,
