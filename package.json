@@ -6,6 +6,7 @@
   "description": "GHOST LOOP - minimalist puzzle-platformer where your past attempts become ghosts.",
   "scripts": {
     "dev": "vite",
+    "dev:lan": "vite --host 0.0.0.0 --port 5174 --strictPort",
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",

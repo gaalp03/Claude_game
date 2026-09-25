@@ -15,6 +15,18 @@ npm run build    # production build into dist/ (upload the folder contents to Cr
 npm run preview  # serve the production build locally
 ```
 
+## Run on your LAN / Tailscale
+
+```bash
+npm run dev:lan   # vite on 0.0.0.0:5174 (strict port, fails instead of switching if 5174 is taken)
+```
+
+Open `http://<your-tailscale-ip>:5174` (find it with `tailscale ip -4`). On Windows allow the port once in an admin PowerShell:
+
+```powershell
+New-NetFirewallRule -DisplayName "Ghost Loop dev 5174" -Direction Inbound -Protocol TCP -LocalPort 5174 -Action Allow
+```
+
 ## Controls
 
 | Action | Keyboard | Touch |
