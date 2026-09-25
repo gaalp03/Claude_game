@@ -6,11 +6,17 @@
 // → dinamikus alakzatok → effektek (ADD) → részecskék → szellem-sorszámok.
 
 import Phaser from 'phaser';
-import { COLORS, ghostAlpha, textStyle, skinColor } from '../ui/theme.js';
+import { COLORS, ghostAlpha, textStyle, skinColor, QUALITY } from '../ui/theme.js';
 import { TRACK_STEP } from '../core/replay.js';
-import { drawPlayer, drawGhost, neonLine, softGlow } from './draw.js';
+import { bakeLayers } from './bake.js';
+import { drawPlayer, drawGhost, neonLine } from './draw.js';
 
 const TRAIL_LEN = 18;
+
+// Könnyített módban a dinamikus fényréteg rajzolása kimarad: ez az objektum minden
+// Graphics-hívást elnyel, így a rajzoló kódnak nem kell mindenhol feltételt vizsgálnia.
+const NOOP = () => NOOP_GFX;
+const NOOP_GFX = new Proxy({}, { get: () => NOOP });
 const lerp = (a, b, t) => a + (b - a) * t;
 
 export class WorldView {
@@ -30,12 +36,13 @@ export class WorldView {
 
     // minden pálya-elem egy konténerben: mobilon kicsinyítve, a vezérlők fölé tesszük
     this.root = scene.add.container(0, 0);
-    this.staticG = scene.add.graphics();
-    this.staticGlow = scene.add.graphics().setBlendMode(Phaser.BlendModes.ADD);
+    // a statikus réteg ideiglenes Graphics-okba rajzolódik, majd textúrába sül (_drawStatic)
+    this.staticG = scene.make.graphics({ x: 0, y: 0 }, false);
+    this.staticGlow = scene.make.graphics({ x: 0, y: 0 }, false);
     this.glow = scene.add.graphics().setBlendMode(Phaser.BlendModes.ADD);
     this.dyn = scene.add.graphics();
     this.fx = scene.add.graphics().setBlendMode(Phaser.BlendModes.ADD);
-    this.root.add([this.staticG, this.staticGlow, this.glow, this.dyn, this.fx]);
+    this.root.add([this.glow, this.dyn, this.fx]);
 
     this.emitters = {};
     const mk = (key, color, extra = {}) => {
@@ -86,6 +93,9 @@ export class WorldView {
       this.root.add(t);
     }
 
+    this.spots = [];
+    this.spotsUsed = 0;
+    this.diamond = [{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }];
     this.doorOpen = new Map(); // ajtó id → látható nyitottság 0..1
     this.squash = new Map(); // entitás index → {sx, sy}
     this.trails = [];
@@ -93,10 +103,32 @@ export class WorldView {
     this.rings = []; // lökéshullámok
     this.rewind = 0; // új kör "visszatekerés" effekt ereje
     this._drawStatic();
+    // két textúra: platformok (normál), fölötte a statikus fény additív keveréssel – mint élőben
+    const rect = { x: -30, y: -30, w: level.width + 60, h: level.height + 60 };
+    this.staticImage = bakeLayers(scene, [this.staticG], 'bake-world', rect);
+    this.staticGlowImage = bakeLayers(scene, [this.staticGlow], 'bake-world-glow', rect).setBlendMode(Phaser.BlendModes.ADD);
+    this.root.addAt(this.staticGlowImage, 0);
+    this.root.addAt(this.staticImage, 0);
   }
 
   destroy() {
     this.root.destroy();
+  }
+
+  /**
+   * Puha fényfolt a Boot-ban generált radiális textúrából (ADD). Képkockánként újrahasznosított
+   * képekből dolgozik: sokkal olcsóbb, mint a körökből összerakott fény, és szebb is.
+   */
+  _spot(x, y, r, color, alpha) {
+    if (QUALITY.low) return;
+    let img = this.spots[this.spotsUsed];
+    if (!img) {
+      img = this.scene.add.image(0, 0, 'glow').setBlendMode(Phaser.BlendModes.ADD);
+      this.root.addAt(img, this.root.getIndex(this.glow) + 1);
+      this.spots.push(img);
+    }
+    this.spotsUsed++;
+    img.setVisible(true).setPosition(x, y).setScale((r * 2) / 64).setTint(color).setAlpha(alpha);
   }
 
   /** Pálya elhelyezése a képernyőn (asztalon teljes méret, érintős módban kisebb) */
@@ -266,7 +298,7 @@ export class WorldView {
       if (t.length > TRAIL_LEN * 2) t.splice(0, 2);
     });
     const p = world.player;
-    if (p.alive && world.frame % 3 === 0 && (Math.abs(p.vx) > 2.2 || Math.abs(p.vy) > 5)) {
+    if (!QUALITY.low && p.alive && world.frame % 3 === 0 && (Math.abs(p.vx) > 2.2 || Math.abs(p.vy) > 5)) {
       this.afterimages.push({ x: p.x, y: p.y, a: 0.45 });
     }
   }
@@ -275,11 +307,12 @@ export class WorldView {
     const dt = dtMs / 1000;
     this.time += dt;
     const g = this.dyn;
-    const gl = this.glow;
+    this.glow.clear();
+    const gl = QUALITY.low ? NOOP_GFX : this.glow;
     const fx = this.fx;
     g.clear();
-    gl.clear();
     fx.clear();
+    this.spotsUsed = 0;
     const t = this.time;
 
     this._drawGoal(g, gl, t);
@@ -299,7 +332,7 @@ export class WorldView {
         const f = (k + 1) / n;
         const size = 3 + f * 9;
         fx.fillStyle(COLORS.ghost, a * 0.3 * f);
-        fx.fillRoundedRect(tr[k * 2] + gh.w / 2 - size / 2, tr[k * 2 + 1] + gh.h / 2 - size / 2, size, size, size / 3);
+        fx.fillRect(tr[k * 2] + gh.w / 2 - size / 2, tr[k * 2 + 1] + gh.h / 2 - size / 2, size, size);
       }
     });
 
@@ -358,6 +391,9 @@ export class WorldView {
         drawPlayer(g, gl, bx, by, w, h, { facing: e.facing, vx: e.vx, t, alpha: pulse, color: col });
       }
     }
+
+    // a képkockában nem használt fénypöttyök elrejtése
+    for (let i = this.spotsUsed; i < this.spots.length; i++) if (this.spots[i].visible) this.spots[i].setVisible(false);
 
     // lökéshullámok
     for (let i = this.rings.length - 1; i >= 0; i--) {
@@ -422,7 +458,7 @@ export class WorldView {
     gl.fillRect(goal.x + 4, 0, goal.w - 8, goal.y + goal.h);
     gl.fillGradientStyle(COLORS.goal, COLORS.goal, COLORS.goal, COLORS.goal, 0, 0, 0.1, 0.1);
     gl.fillRect(goal.x - 6, goal.y - 60, goal.w + 12, goal.h + 60);
-    softGlow(gl, cx, cy, 34 + pulse * 6, COLORS.goal, 0.2);
+    this._spot(cx, cy, 36 + pulse * 6, COLORS.goal, 0.3);
     // keret és kapu
     g.fillStyle(COLORS.goal, 0.14 + 0.12 * pulse);
     g.fillRoundedRect(goal.x, goal.y, goal.w, goal.h, 4);
@@ -431,12 +467,18 @@ export class WorldView {
     // forgó gyémánt
     const r = 9 + pulse * 2;
     const a = t * 2.2;
-    const pts = [0, 1, 2, 3].map((i) => ({ x: cx + Math.cos(a + (i * Math.PI) / 2) * r, y: cy + Math.sin(a + (i * Math.PI) / 2) * r * 1.2 }));
+    const pts = this.diamond;
+    for (let i = 0; i < 4; i++) {
+      pts[i].x = cx + Math.cos(a + (i * Math.PI) / 2) * r;
+      pts[i].y = cy + Math.sin(a + (i * Math.PI) / 2) * r * 1.2;
+    }
+    pts[4].x = pts[0].x;
+    pts[4].y = pts[0].y;
     g.fillStyle(0xeafff2, 0.9);
     g.fillTriangle(pts[0].x, pts[0].y, pts[1].x, pts[1].y, pts[2].x, pts[2].y);
     g.fillTriangle(pts[0].x, pts[0].y, pts[2].x, pts[2].y, pts[3].x, pts[3].y);
     g.lineStyle(1.5, COLORS.goal, 1);
-    g.strokePoints([...pts, pts[0]], false);
+    g.strokePoints(pts, false);
     // felfelé futó csíkok
     for (let i = 0; i < 3; i++) {
       const yy = goal.y + goal.h - ((t * 30 + i * (goal.h / 3)) % goal.h);
@@ -453,7 +495,7 @@ export class WorldView {
       if (b.pressed) {
         gl.fillGradientStyle(col, col, col, col, 0, 0, 0.35, 0.35);
         gl.fillRect(d.x + 2, d.surface - 34, d.w - 4, 32);
-        softGlow(gl, d.x + d.w / 2, d.surface - 2, 22, col, 0.25);
+        this._spot(d.x + d.w / 2, d.surface - 2, 24, col, 0.4);
       } else {
         gl.fillStyle(col, 0.12 + 0.08 * Math.sin(t * 4));
         gl.fillRoundedRect(d.x - 3, d.surface - hgt - 4, d.w + 6, hgt + 6, 4);
@@ -518,7 +560,7 @@ export class WorldView {
         g.fillCircle(px, py, 4.5);
         g.fillStyle(bc, on ? 1 : 0.25);
         g.fillCircle(px, py, 3.2);
-        if (on) softGlow(gl, px, py, 12, bc, 0.4);
+        if (on) this._spot(px, py, 13, bc, 0.6);
       });
     }
   }

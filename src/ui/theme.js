@@ -6,13 +6,22 @@ export const VIEW_H = 540;
 
 // Belső renderelési szorzó: nagy felbontású kijelzőn 2x, gyenge/kis kijelzőn 1x,
 // így asztalon éles a kép, olcsó telefonon pedig nem pazaroljuk a kitöltési sebességet.
+/** Érintőképernyős (telefon/tablet) eszköz-e: ott a kitöltési sebesség a szűk keresztmetszet */
+export const IS_TOUCH_DEVICE =
+  typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+
 function pickScale() {
   if (typeof window === 'undefined') return 1;
   const dpr = window.devicePixelRatio || 1;
   const longest = Math.max(window.screen?.width || 0, window.screen?.height || 0, window.innerWidth, window.innerHeight);
-  return longest * dpr >= 1400 ? 2 : 1;
+  if (longest * dpr < 1400) return 1;
+  // telefonon 1,5×: kb. 44%-kal kevesebb pixel, mint 2×, a kis kijelzőn alig látszik a különbség
+  return IS_TOUCH_DEVICE ? 1.5 : 2;
 }
 export const RENDER_SCALE = pickScale();
+
+// Minőségi szint: gyenge eszközön (mért képkockaidő alapján) könnyített effektek
+export const QUALITY = { low: false };
 
 export const COLORS = {
   bg: 0x05040f,

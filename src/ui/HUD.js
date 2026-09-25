@@ -55,6 +55,10 @@ export class HUD {
       g.fillRoundedRect(10, 10, this.tag.width + 12, 20, 5);
       this.tag.setX(16).setY(13);
     }
+    // szünet ikon (statikus)
+    g.fillStyle(COLORS.text, 0.85);
+    g.fillRoundedRect(VIEW_W - 34, 15, 5, 20, 2);
+    g.fillRoundedRect(VIEW_W - 24, 15, 5, 20, 2);
     // időzítő kapszula
     g.fillStyle(0x0a0b1f, 0.85);
     g.fillRoundedRect(VIEW_W / 2 - 62, 6, 124, 36, 18);
@@ -146,18 +150,24 @@ export class HUD {
     gl.fillStyle(0xffffff, 0.8);
     gl.fillRect(VIEW_W * frac - 3, 0, 3, 3);
 
-    // időzítő kapszula kerete
+    // időzítő kapszula kerete (csak kevés időnél villog)
     const blink = low ? 0.6 + 0.4 * Math.sin(this.t * 18) : 1;
     g.lineStyle(1.5, col, 0.8 * blink);
     g.strokeRoundedRect(VIEW_W / 2 - 62, 6, 124, 36, 18);
-    this.timer.setText(remaining.toFixed(2)).setColor(hex(low ? COLORS.hazard : COLORS.text));
-    this.timer.setShadow(0, 0, hex(col), 12, false, true);
+    // A szöveg újrarajzolása drága (canvas + textúra-feltöltés): a színt és a fényt csak
+    // állapotváltáskor állítjuk, a szöveget csak ha tényleg változott.
+    this.timer.setText(remaining.toFixed(2));
+    if (low !== this._low) {
+      this._low = low;
+      this.timer.setColor(hex(low ? COLORS.hazard : COLORS.text));
+      this.timer.setShadow(0, 0, hex(col), 12, false, true);
+    }
     this.loop.setText(`LOOP ${loop}`);
 
     // szellem ikonok: rögzítettek lilán (halványodva), a "par" szaggatott helyekkel.
     // Szellem nélküli (tanító) pályán csak akkor jelenik meg, ha a játékos mégis rögzít.
     const showGhosts = this.par > 0 || ghosts > 0;
-    this.ghostLabel.setVisible(showGhosts);
+    if (this.ghostLabel.visible !== showGhosts) this.ghostLabel.setVisible(showGhosts);
     const slots = showGhosts ? Math.max(this.maxGhosts, ghosts) : 0;
     const x0 = VIEW_W - 58 - slots * 20;
     for (let i = 0; i < slots; i++) {
@@ -170,10 +180,5 @@ export class HUD {
       }
     }
     this.ghostLabel.setText(`GHOSTS ${ghosts} / PAR ${this.par}`);
-
-    // szünet ikon
-    g.fillStyle(COLORS.text, 0.85);
-    g.fillRoundedRect(VIEW_W - 34, 15, 5, 20, 2);
-    g.fillRoundedRect(VIEW_W - 24, 15, 5, 20, 2);
   }
 }

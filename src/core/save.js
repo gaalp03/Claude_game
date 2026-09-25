@@ -11,7 +11,7 @@ export function defaultSave() {
   return {
     levels: {}, // id → { done, bestFrames, fewestGhosts, attempts, stars, medal }
     daily: { streak: 0, best: 0, last: null, history: {} },
-    settings: { muted: false, music: true, skin: 'neon' },
+    settings: { muted: false, music: true, skin: 'neon', lowFx: false },
     stats: { deaths: 0, ghosts: 0, loops: 0, wins: 0 },
     achievements: {} // id → időbélyeg
   };

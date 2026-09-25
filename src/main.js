@@ -11,7 +11,7 @@ import { LevelSelectScene } from './scenes/LevelSelectScene.js';
 import { GameScene } from './scenes/GameScene.js';
 import { DailyScene } from './scenes/DailyScene.js';
 import { ProfileScene } from './scenes/ProfileScene.js';
-import { VIEW_W, VIEW_H, RENDER_SCALE, COLORS } from './ui/theme.js';
+import { VIEW_W, VIEW_H, RENDER_SCALE, COLORS, IS_TOUCH_DEVICE } from './ui/theme.js';
 import { sfx } from './audio/sfx.js';
 
 const game = new Phaser.Game({
@@ -30,6 +30,10 @@ const game = new Phaser.Game({
     powerPreference: 'high-performance'
   },
   input: { activePointers: 4 },
+  // a hangot a saját WebAudio szintetizátor adja: a Phaser ne nyisson második AudioContextet
+  audio: { noAudio: true },
+  // telefonon 120 Hz-es kijelzőn se rajzoljunk feleslegesen dupla képkockát
+  fps: IS_TOUCH_DEVICE ? { limit: 60 } : {},
   disableContextMenu: true,
   scene: [BootScene, MenuScene, LevelSelectScene, GameScene, DailyScene, ProfileScene]
 });

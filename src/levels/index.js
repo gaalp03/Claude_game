@@ -13,10 +13,19 @@ export const RAW_LEVELS = Object.keys(modules)
 export const LEVELS = RAW_LEVELS.map((raw) => loadLevel(raw));
 
 // Fejlesztői idő: a mellékelt megoldás utolsó körének hossza (ezt kell megverni a "Beat the Dev" éremhez).
-// Betöltéskor egyszer lefuttatjuk a szimulációt (pályánként ~1 ms).
+// Lusta számítás: csak az első használatkor futtatjuk le a szimulációt, így nem lassítja az indulást.
 for (const level of LEVELS) {
-  const res = level.solution ? runSolution(level, level.solution) : null;
-  level.devFrames = res && res.ok ? res.frames : level.frameLimit;
+  let cached = null;
+  Object.defineProperty(level, 'devFrames', {
+    enumerable: true,
+    get() {
+      if (cached === null) {
+        const res = level.solution ? runSolution(level, level.solution) : null;
+        cached = res && res.ok ? res.frames : level.frameLimit;
+      }
+      return cached;
+    }
+  });
 }
 
 export const CHAPTERS = [

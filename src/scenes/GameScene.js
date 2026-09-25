@@ -18,7 +18,7 @@ import { hashString } from '../core/rng.js';
 import { HUD } from '../ui/HUD.js';
 import { TouchControls, TOUCH_LAYOUT } from '../ui/TouchControls.js';
 import { showPanel } from '../ui/Panel.js';
-import { COLORS, setupCamera, addCameraFX } from '../ui/theme.js';
+import { COLORS, setupCamera, addCameraFX, QUALITY } from '../ui/theme.js';
 import { fadeIn, go } from '../ui/transition.js';
 import { sfx } from '../audio/sfx.js';
 import { app } from '../state.js';
@@ -219,7 +219,33 @@ export class GameScene extends Phaser.Scene {
 
   // ---------------------------------------------------------------- fő ciklus
 
+  /**
+   * Automatikus minőség: játék közben mérjük a képkockaidőt; ha gyenge az eszköz
+   * (tartósan 40 fps alatt), könnyített effektekre váltunk, és ezt megjegyezzük.
+   */
+  _watchPerformance(delta) {
+    if (QUALITY.low || QUALITY.forced || this.state !== 'play') return;
+    const p = this.perf || (this.perf = { skip: 60, n: 0, sum: 0 });
+    if (p.skip > 0) {
+      p.skip--;
+      return;
+    }
+    p.n++;
+    p.sum += Math.min(delta, 100);
+    if (p.n < 150) return;
+    const avg = p.sum / p.n;
+    p.n = 0;
+    p.sum = 0;
+    if (avg > 25) {
+      QUALITY.low = true;
+      app.save.settings.lowFx = true;
+      app.persist();
+      this.backdrop?.dust?.stop();
+    }
+  }
+
   update(time, delta) {
+    this._watchPerformance(delta);
     const dt = Math.min(delta, 250);
     if (this.state !== 'paused' && this.state !== 'won') {
       this.acc += dt;

@@ -160,8 +160,14 @@ Mezők: `id, name, hint, size, timeLimit, ghosts (par), spawn, goal, platforms, 
 
 ## Teljesítmény és méret
 
-- Build: ~1,3 MB (≈ 360 KB gzip), ebből a Phaser ~1,2 MB – jóval az 50 MB alatt.
-- A statikus pályaelemek egyszer rajzolódnak ki; képkockánként csak néhány tucat dinamikus alakzat.
+- Build: ~1,4 MB (≈ 370 KB gzip), ebből a Phaser ~1,2 MB – jóval az 50 MB alatt.
+- **A statikus rétegek textúrába sülnek (render/bake.js):** a Phaser a Graphics parancsait minden képkockán újra feldolgozza, ezért a háttér (városkép, rács, fényfoltok) és a pálya statikus része (platformok, tüskék) egyszer egy DynamicTexture-be rajzolódik, és onnan egyetlen képként jelenik meg. A statikus fény külön textúra, additív keveréssel – a kép pontosan ugyanaz, mint élőben rajzolva.
+- **A szöveg csak változáskor rajzolódik újra:** a HUD időzítőjének színe és fénye csak a „kevés idő” állapot váltásakor frissül (korábban minden képkockán kétszer rajzolta újra a canvas-szöveget blurral).
+- **Radiális fény-textúra** (Boot-ban generálva) a körökből összerakott fényfoltok helyett; képkockánként újrahasznosított képek.
+- **Telefonon legfeljebb 1,5× belső felbontás és 60 fps-limit**, a Phaser saját hangrendszere kikapcsolva (a hangot a saját WebAudio szintetizátor adja).
+- **Automatikus könnyített mód:** ha játék közben a képkockaidő tartósan 25 ms fölött van, a dinamikus fényréteg, az utóképek és a por nagy része kikapcsol; a döntés mentődik. Kézzel: `?fx=lite` / `?fx=full`.
+- **A fejlesztői idők lusta számítással** készülnek (első használatkor), így a 24 megoldás szimulációja nem lassítja az indulást.
+- Mérés (szoftveres WebGL, azonos gép, 12. pálya 3 szellemmel): renderelés 15,0 → ~9 ms/képkocka, könnyített módban ~5,6 ms.
 - Legfeljebb 6 fizikai lépés egy képkockán (lassú eszközön sem "spirál" a fix lépés).
 
 ## Tesztelés

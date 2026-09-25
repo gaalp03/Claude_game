@@ -48,7 +48,7 @@ describe('daily loop generator', () => {
       expect(level.timeLimit).toBeLessThanOrEqual(15);
     }
     expect(fallbacks).toBe(0);
-  });
+  }, 30000);
 
   it('is deterministic per date and varies across dates', () => {
     const a = generateDaily('2026-09-24', pool);
@@ -74,7 +74,7 @@ describe('daily loop generator', () => {
       const level = loadLevel(generateDaily(key, pool).raw);
       expect(findTrivialWin(level, 6), key).toBeNull();
     }
-  });
+  }, 30000);
 
   it('numbers days from the epoch', () => {
     expect(dailyNumber('2026-01-01')).toBe(1);

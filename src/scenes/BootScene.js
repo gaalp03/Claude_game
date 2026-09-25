@@ -18,6 +18,18 @@ export class BootScene extends Phaser.Scene {
     g.fillRect(0, 0, 6, 6);
     g.generateTexture('spark', 6, 6);
     g.destroy();
+    // puha radiális fény-textúra (a dinamikus fényfoltokhoz, színezve használjuk)
+    if (!this.textures.exists('glow')) {
+      const ct = this.textures.createCanvas('glow', 64, 64);
+      const ctx = ct.getContext();
+      const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+      grad.addColorStop(0, 'rgba(255,255,255,1)');
+      grad.addColorStop(0.35, 'rgba(255,255,255,0.45)');
+      grad.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 64, 64);
+      ct.refresh();
+    }
 
     // a böngésző csak felhasználói gesztus után engedi a hangot
     const unlock = () => sfx.unlock();

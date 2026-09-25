@@ -1,9 +1,10 @@
 // Közös háttér minden jelenethez: függőleges színátmenet, távoli neon városkép,
 // puha fényfoltok, perspektivikusan halványuló rács, lebegő por és vignetta.
-// A statikus rész egyszer rajzolódik ki; csak a por (részecskék) mozog.
+// A statikus rész egyszer rajzolódik ki és egy textúrába sül (bake.js); csak a por mozog.
 
 import Phaser from 'phaser';
-import { COLORS, VIEW_W, VIEW_H } from '../ui/theme.js';
+import { COLORS, VIEW_W, VIEW_H, QUALITY } from '../ui/theme.js';
+import { bakeLayers } from './bake.js';
 import { mulberry32 } from '../core/rng.js';
 import { softGlow } from './draw.js';
 
@@ -17,12 +18,12 @@ export class Backdrop {
     const rng = mulberry32(seed);
     const PAD = 60;
 
-    const g = scene.add.graphics().setDepth(-100);
+    const g = scene.make.graphics({ x: 0, y: 0 }, false);
     // színátmenet: mély lila fent, majdnem fekete lent
     g.fillGradientStyle(COLORS.bgTop, COLORS.bgTop, COLORS.bgBottom, COLORS.bgBottom, 1);
     g.fillRect(-PAD, -PAD, VIEW_W + PAD * 2, VIEW_H + PAD * 2);
 
-    const glow = scene.add.graphics().setDepth(-99).setBlendMode(Phaser.BlendModes.ADD);
+    const glow = scene.make.graphics({ x: 0, y: 0 }, false).setBlendMode(Phaser.BlendModes.ADD);
     // nagy, puha fényfoltok
     softGlow(glow, VIEW_W * (0.15 + rng.next() * 0.2), VIEW_H * 0.25, 260, COLORS.ghost, 0.05);
     softGlow(glow, VIEW_W * (0.65 + rng.next() * 0.25), VIEW_H * 0.35, 300, COLORS.live, 0.035);
@@ -60,7 +61,7 @@ export class Backdrop {
     }
 
     // rács: lefelé erősödik (mélységérzet), minden 4. vonal fényesebb
-    const grid = scene.add.graphics().setDepth(-98);
+    const grid = scene.make.graphics({ x: 0, y: 0 }, false);
     for (let y = 0; y <= VIEW_H; y += 30) {
       const a = 0.04 + 0.12 * (y / VIEW_H);
       grid.lineStyle(1, COLORS.grid, (y / 30) % 4 === 0 ? a * 1.8 : a);
@@ -71,7 +72,11 @@ export class Backdrop {
       grid.lineBetween(x, 0, x, VIEW_H);
     }
 
-    // lebegő por
+    // az átlátszatlan alapra a fény ADD keveréssel pontosan úgy kerül, mint élőben
+    this.image = bakeLayers(scene, [g, glow, grid], 'bake-backdrop', { x: -PAD, y: -PAD, w: VIEW_W + PAD * 2, h: VIEW_H + PAD * 2 }).setDepth(-100);
+
+    // lebegő por (könnyített módban kevesebb)
+    if (QUALITY.low) dust = Math.floor(dust / 3);
     this.dust = scene.add.particles(0, 0, 'spark', {
       x: { min: 0, max: VIEW_W },
       y: { min: 0, max: VIEW_H },
@@ -99,7 +104,7 @@ export class Backdrop {
     v.fillRect(-PAD, -PAD, 90 + PAD, VIEW_H + PAD * 2);
     v.fillGradientStyle(edge, edge, edge, edge, 0, 0.5, 0, 0.5);
     v.fillRect(VIEW_W - 90, -PAD, 90 + PAD, VIEW_H + PAD * 2);
-    this.objects = [g, glow, grid, v];
+    this.objects = [this.image, v];
     this.vignette = v;
   }
 
