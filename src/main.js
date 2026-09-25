@@ -45,6 +45,26 @@ document.addEventListener('visibilitychange', () => {
   else sfx.ctx.resume().catch(() => {});
 });
 
+// Álló telefon: "fordítsd el" képernyő, és a futó kör szünetel. Fekvőre fordítva eltűnik;
+// a "PLAY ANYWAY" gombbal elrejthető a következő fordításig.
+let rotateDismissed = false;
+let wasPortrait = null;
+function applyOrientation() {
+  const portrait = IS_TOUCH_DEVICE && window.innerHeight > window.innerWidth;
+  if (portrait !== wasPortrait) rotateDismissed = false;
+  wasPortrait = portrait;
+  const show = portrait && !rotateDismissed;
+  document.body.classList.toggle('show-rotate', show);
+  if (show) game.events.emit('portrait-block');
+}
+window.addEventListener('resize', applyOrientation);
+window.addEventListener('orientationchange', applyOrientation);
+document.getElementById('rotate-dismiss')?.addEventListener('click', () => {
+  rotateDismissed = true;
+  applyOrientation();
+});
+applyOrientation();
+
 // hibakereséshez a böngésző konzolból elérhető
 // (VITE_EXPOSE_GAME=1 csak az automata ellenőrző buildhez; a feltöltött buildben nincs benne)
 if (import.meta.env.DEV || import.meta.env.VITE_EXPOSE_GAME) window.__game = game;

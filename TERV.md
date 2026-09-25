@@ -152,6 +152,7 @@ Mezők: `id, name, hint, size, timeLimit, ghosts (par), spawn, goal, platforms, 
 - Billentyűzet: nyilak/A-D mozgás, Space/fel/W ugrás, R rögzítés, Backspace újraindítás, Z utolsó szellem törlése, Esc/P szünet, M némítás; a menük nyilakkal + Enterrel is kezelhetők.
 - **Mobilon a pálya 72%-ra kicsinyítve felülre kerül, a vezérlők alá és mellé** – így az ujj soha nem takarja el a pályát vagy a célt.
 - Érintés: bal-alul ◀ ▶ zóna, jobb-alul JUMP és REC, a jobb szélen UNDO és újraindítás; több ujjas érintést kezel (futás + ugrás egyszerre).
+- **Álló telefonon „fordítsd el” képernyő** (HTML/CSS, animált neon telefon-ikon): a 16:9-es kép állva a képernyő negyedét töltené ki; a futó kör ilyenkor szünetel, fekvőre fordítva eltűnik, a „PLAY ANYWAY” gomb a következő fordításig elrejti. Asztali álló ablakban nincs ilyen, ott letterbox marad.
 - **Az első érintés automatikusan bekapcsolja az érintős módot** asztali érintőképernyőn is.
 
 ## Hang

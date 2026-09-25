@@ -101,6 +101,11 @@ export class GameScene extends Phaser.Scene {
       if (this.state === 'play') this.pause();
     };
     this.game.events.on('blur', this._onBlur);
+    // álló telefonra fordítva a futó kör szünetel (a "fordítsd el" képernyő takarja)
+    this._onPortrait = () => {
+      if (this.state === 'play') this.pause();
+    };
+    this.game.events.on('portrait-block', this._onPortrait);
     this.events.once('shutdown', () => this._cleanup());
 
     this.startRound();
@@ -157,6 +162,7 @@ export class GameScene extends Phaser.Scene {
 
   _cleanup() {
     this.game.events.off('blur', this._onBlur);
+    this.game.events.off('portrait-block', this._onPortrait);
     this.input.keyboard?.off('keydown', this._onKey);
     this.touch?.destroy();
     this.view?.destroy();
