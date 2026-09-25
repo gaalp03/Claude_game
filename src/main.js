@@ -46,4 +46,5 @@ document.addEventListener('visibilitychange', () => {
 });
 
 // hibakereséshez a böngésző konzolból elérhető
-if (import.meta.env.DEV) window.__game = game;
+// (VITE_EXPOSE_GAME=1 csak az automata ellenőrző buildhez; a feltöltött buildben nincs benne)
+if (import.meta.env.DEV || import.meta.env.VITE_EXPOSE_GAME) window.__game = game;

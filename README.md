@@ -15,6 +15,14 @@ npm run build    # production build into dist/ (upload the folder contents to Cr
 npm run preview  # serve the production build locally
 ```
 
+## CrazyGames upload
+
+```bash
+npm run package   # production build → release/ghost-loop-crazygames.zip (index.html at the zip root)
+```
+
+Checked for Basic Launch: ~1.4 MB total (≈0.46 MB zipped), single `index.html` entry with relative `./assets/` paths (runs from any subfolder / iframe), auto-starts into its own menu, 16:9 letterboxed and centered at any window size, fully playable with keyboard, mouse or touch, no external requests, links, ads or accounts (the CrazyGames SDK hooks are compiled out while `SDK_ENABLED = false`). Note: the build uses ES modules, so open it over http(s) (`npm run preview`), not by double-clicking `index.html`.
+
 ## Run on your LAN / Tailscale
 
 ```bash

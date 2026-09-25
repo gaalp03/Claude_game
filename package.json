@@ -8,6 +8,7 @@
     "dev": "vite",
     "dev:lan": "vite --host 0.0.0.0 --port 5174 --strictPort",
     "build": "vite build",
+    "package": "node scripts/package.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "verify": "node scripts/verify-levels.mjs"
@@ -18,6 +19,7 @@
     "phaser": "^3.90.0"
   },
   "devDependencies": {
+    "adm-zip": "^0.5.18",
     "vite": "^7.3.6",
     "vitest": "^3.2.7"
   }
