@@ -3,6 +3,7 @@
 
 import Phaser from 'phaser';
 import { createWorld } from '../core/world.js';
+import { runSolution } from '../core/solver.js';
 import { loadLevel } from '../core/level-loader.js';
 import { STEP_MS, IN_LEFT, IN_RIGHT, IN_JUMP } from '../core/physics.js';
 import { recordLevel, loadPB, savePB } from '../core/save.js';
@@ -62,6 +63,8 @@ export class GameScene extends Phaser.Scene {
     const levelMode = this.mode === 'level';
     const pb = levelMode ? decodeTrack(loadPB(this.level.id)) : null;
     const prev = levelMode ? app.save.levels[this.level.id] : null;
+    this.skinColor = skinById(app.save.settings.skin).color;
+    if (this.skinColor === 'prism') this.skinColor = COLORS.live;
     this.view = new WorldView(this, this.level, { skin: skinById(app.save.settings.skin).color, pb });
     const daily = this.mode === 'daily';
     const title = daily ? `${this.level.name}${this.practice ? ' · practice' : ''}` : this.level.name;
@@ -91,6 +94,9 @@ export class GameScene extends Phaser.Scene {
     });
 
     this._setupKeyboard();
+    this.input.on('pointerdown', () => {
+      if (this.state === 'demo' && !this.panel) this._endSolution();
+    });
     this._onBlur = () => {
       if (this.state === 'play') this.pause();
     };
@@ -132,6 +138,10 @@ export class GameScene extends Phaser.Scene {
       if (ev.repeat) return;
       const c = ev.code;
       if (this.panel) return; // a panel saját navigációt használ
+      if (this.state === 'demo') {
+        this._endSolution();
+        return;
+      }
       if (c === 'Space' || c === 'ArrowUp' || c === 'KeyW') this.jumpLatch = true;
       else if (c === 'KeyR') this.recordGhost();
       else if (c === 'Backspace') {
@@ -169,18 +179,50 @@ export class GameScene extends Phaser.Scene {
   startRound(opts = {}) {
     this.world = createWorld(this.level, this.ghosts.slice());
     this.view.resetRound(this.world, opts);
+    if (opts.rewindTrack) this.view.playRewind(opts.rewindTrack, opts.rewindColor ?? COLORS.live);
+    this.view.setPreview(this._previewPaths(), this.ghosts.length);
     this.state = 'ready';
     this.acc = 0;
     this.track = [];
     const n = this.ghosts.length;
-    this.hud.hold(`LOOP ${this.attempts + 1}`, n ? `${n} ghost${n > 1 ? 's' : ''} will replay · move to start` : 'move or jump to start');
+    const stuck = this.mode === 'level' && this.attempts >= 5 && !this.usedSolution;
+    this.hud.hold(
+      `LOOP ${this.attempts + 1}`,
+      stuck ? 'stuck? pause (Esc) → SHOW SOLUTION' : n ? `${n} ghost${n > 1 ? 's' : ''} will replay · move to start` : 'move or jump to start'
+    );
+  }
+
+  /**
+   * A szellemek várható útja: egy külön szimuláció álló élő játékossal, a felvételek
+   * végéig (a világ determinisztikus, így ez pontosan az, amit a szellemek tenni fognak,
+   * amíg az élő játékos nem nyúl a közös gombokhoz).
+   */
+  _previewPaths() {
+    if (!this.ghosts.length) return null;
+    const sim = createWorld(this.level, this.ghosts.slice());
+    const end = Math.min(this.level.frameLimit, Math.max(...this.ghosts.map((r) => r.length)) + 30);
+    const paths = sim.ghosts.map((g) => ({ index: g.index, pts: [g.x, g.y] }));
+    for (let f = 0; f < end && sim.status === 'playing'; f++) {
+      sim.step(0);
+      if (f % 3 === 2) sim.ghosts.forEach((g, i) => g.alive && paths[i].pts.push(g.x, g.y));
+    }
+    return paths;
+  }
+
+  /** Az aktuális kör útvonala (a visszatekerés-animációhoz) */
+  _currentTrack() {
+    const t = this.track.slice();
+    const p = this.world.player;
+    t.push(p.x, p.y);
+    return t;
   }
 
   restartRound() {
     if (this.state === 'won' || this.state === 'paused') return;
+    const track = this.state === 'play' ? this._currentTrack() : null;
     if (this.state === 'play') this.outcomes.push('restart');
     sfx.restart();
-    this.startRound({ rewind: true });
+    this.startRound({ rewind: true, rewindTrack: track, rewindColor: this.skinColor });
   }
 
   recordGhost() {
@@ -193,6 +235,7 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     const p = this.world.player;
+    const track = this._currentTrack();
     this.view.ghostBurst(p.x + p.w / 2, p.y + p.h / 2);
     this.ghosts.push(Uint8Array.from(this.world.liveInputs));
     this.outcomes.push('ghost');
@@ -200,7 +243,7 @@ export class GameScene extends Phaser.Scene {
     this._checkAchievements();
     sfx.record();
     this.cameras.main.flash(140, 90, 30, 150);
-    this.startRound({ rewind: true });
+    this.startRound({ rewind: true, rewindTrack: track, rewindColor: COLORS.ghost });
     this.hud.flash(`GHOST ${this.ghosts.length} RECORDED`, COLORS.ghost, 'it will repeat that loop exactly');
   }
 
@@ -265,14 +308,21 @@ export class GameScene extends Phaser.Scene {
       limit: this.level.timeLimit,
       ghosts: this.ghosts.length,
       loop: this.attempts + (this.state === 'ready' ? 1 : 0),
-      ready: this.state === 'ready'
+      ready: this.state === 'ready',
+      recs: this.world.ghosts.length ? this.world.ghosts.map((g) => g.rec.length) : null,
+      frame: this.world.frame,
+      frameLimit: this.level.frameLimit
     }, delta);
     this.touch.draw();
   }
 
   tick() {
+    if (this.state === 'demo') {
+      this._tickSolution();
+      return;
+    }
     if (this.state === 'dying') {
-      if (--this.pauseTimer <= 0) this.startRound({ rewind: true });
+      if (--this.pauseTimer <= 0) this.startRound({ rewind: true, rewindTrack: this.deathTrack, rewindColor: this.skinColor });
       return;
     }
     const bits = this.readInput();
@@ -332,6 +382,7 @@ export class GameScene extends Phaser.Scene {
     this.state = 'dying';
     this.pauseTimer = DEATH_PAUSE;
     this.outcomes.push('death');
+    this.deathTrack = this._currentTrack();
     this.deathsThisLevel++;
     app.save.stats.deaths++;
     if (app.save.stats.deaths % 10 === 0) this._checkAchievements();
@@ -343,6 +394,7 @@ export class GameScene extends Phaser.Scene {
     this.state = 'dying';
     this.pauseTimer = TIMEOUT_PAUSE;
     this.outcomes.push('timeout');
+    this.deathTrack = this._currentTrack();
     sfx.timeout();
     this.hud.flash('TIME UP', COLORS.hazard, 'loop restarts · ghosts are kept');
     this.cameras.main.shake(140, 0.005);
@@ -370,6 +422,7 @@ export class GameScene extends Phaser.Scene {
     const level = this.level;
     const id = level.id;
     const starsBefore = totalStars(app.save);
+    const prevBest = app.save.levels[id]?.bestFrames ?? null;
     const rec = recordLevel(app.save, id, frames, ghosts, this.attempts);
     const mask = starMaskFor({ frames, ghosts }, level.ghosts, level.devFrames);
     const medal = medalFor(frames, level.devFrames);
@@ -391,6 +444,7 @@ export class GameScene extends Phaser.Scene {
       medal,
       newBest: rec.newTime && !rec.firstClear,
       bestFrames: app.save.levels[id].bestFrames,
+      prevBest,
       nextLabel: nextIsNewChapter ? 'CHAPTER 2' : 'NEXT LEVEL',
       onNext: hasNext ? () => this._next() : null,
       onRetry: () => this._retryLevel(),
@@ -431,6 +485,10 @@ export class GameScene extends Phaser.Scene {
   // ---------------------------------------------------------------- szünet
 
   pause() {
+    if (this.state === 'demo') {
+      this._endSolution();
+      return;
+    }
     if (this.state === 'paused' || this.state === 'won' || this.panel) return;
     this.prevState = this.state === 'dying' ? 'ready' : this.state;
     if (this.state === 'dying') this.startRound();
@@ -438,32 +496,88 @@ export class GameScene extends Phaser.Scene {
     sdk.gameplayStop();
     const muted = app.save.settings.muted;
     const back = () => this.resume();
+    const buttons = [{ label: 'RESUME', onClick: back }];
+    // elakadás esetén (3 kör után) megnézhető a fejlesztői megoldás
+    if (this.mode === 'level' && this.level.solution && this.attempts >= 3) {
+      buttons.push({ label: 'SHOW SOLUTION', color: COLORS.links[0], onClick: () => this._showSolution() });
+    }
+    buttons.push({ label: 'RESTART LEVEL', onClick: () => this._retryLevel() });
+    this.soundBtn = buttons.length;
+    buttons.push({ label: muted ? 'SOUND: OFF' : 'SOUND: ON', color: COLORS.dim, onClick: () => this._toggleSoundInPanel() });
+    this.musicBtn = buttons.length;
+    buttons.push({ label: app.save.settings.music ? 'MUSIC: ON' : 'MUSIC: OFF', color: COLORS.dim, onClick: () => this._toggleMusicInPanel() });
+    buttons.push(
+      this.mode === 'daily'
+        ? { label: 'DAILY LOOP', color: COLORS.dim, onClick: () => go(this, 'Daily') }
+        : { label: 'LEVELS', color: COLORS.dim, onClick: () => go(this, 'LevelSelect') }
+    );
+    buttons.push({ label: 'MAIN MENU', color: COLORS.dim, onClick: () => go(this, 'Menu') });
     this.panel = showPanel(this, {
       title: 'PAUSED',
       lines: [{ text: `Loop ${this.attempts} · ${this.ghosts.length} ghost(s) recorded`, color: COLORS.dim, size: 14 }],
-      buttons: [
-        { label: 'RESUME', onClick: back },
-        { label: 'RESTART LEVEL', onClick: () => this._retryLevel() },
-        { label: muted ? 'SOUND: OFF' : 'SOUND: ON', color: COLORS.dim, onClick: () => this._toggleSoundInPanel() },
-        { label: app.save.settings.music ? 'MUSIC: ON' : 'MUSIC: OFF', color: COLORS.dim, onClick: () => this._toggleMusicInPanel() },
-        this.mode === 'daily'
-          ? { label: 'DAILY LOOP', color: COLORS.dim, onClick: () => go(this, 'Daily') }
-          : { label: 'LEVELS', color: COLORS.dim, onClick: () => go(this, 'LevelSelect') },
-        { label: 'MAIN MENU', color: COLORS.dim, onClick: () => go(this, 'Menu') }
-      ],
+      buttons,
       back
     });
   }
 
+  // ---------------------------------------------------------------- megoldás-visszajátszás
+
+  _showSolution() {
+    if (this.panel) {
+      this.panel.destroy();
+      this.panel = null;
+    }
+    const start = () => {
+      if (!this._solution) {
+        const res = runSolution(this.level, this.level.solution);
+        if (!res.ok) return this.startRound();
+        this._solution = res;
+      }
+      this.usedSolution = true;
+      this.world = createWorld(this.level, this._solution.ghosts);
+      this.view.resetRound(this.world, { rewind: true });
+      this.view.setPreview(null, 0);
+      this.state = 'demo';
+      this.demoEnd = 0;
+      this.acc = 0;
+      this.hud.hold('SOLUTION', 'watch the loops play together · any key to skip');
+      sdk.gameplayStart();
+    };
+    // CrazyGames-en ez jutalomvideó után jönne; kikapcsolt SDK-nál azonnal indul
+    sdk.rewardedAd(start, () => {
+      this.hud.flash('NO VIDEO AVAILABLE', COLORS.dim);
+      this.startRound();
+      sdk.gameplayStart();
+    });
+  }
+
+  _tickSolution() {
+    const w = this.world;
+    if (w.status !== 'playing') {
+      // a győzelem után még egy kicsit látszik, aztán a játékos jön
+      if (++this.demoEnd > 70) this._endSolution();
+      return;
+    }
+    const inputs = this._solution.finalInputs;
+    const events = w.step(w.frame < inputs.length ? inputs[w.frame] : 0);
+    this.view.afterStep(w);
+    for (const ev of events) this._handleEvent(ev);
+  }
+
+  _endSolution() {
+    if (this.state !== 'demo') return;
+    this.startRound({ rewind: true });
+    this.hud.flash('YOUR TURN', COLORS.live, 'your ghosts are still here');
+  }
+
   _toggleSoundInPanel() {
     const m = app.toggleMute();
-    const btn = this.panel.nav.buttons[2];
-    btn.setLabel(m ? 'SOUND: OFF' : 'SOUND: ON');
+    this.panel.nav.buttons[this.soundBtn].setLabel(m ? 'SOUND: OFF' : 'SOUND: ON');
   }
 
   _toggleMusicInPanel() {
     const on = app.toggleMusic();
-    this.panel.nav.buttons[3].setLabel(on ? 'MUSIC: ON' : 'MUSIC: OFF');
+    this.panel.nav.buttons[this.musicBtn].setLabel(on ? 'MUSIC: ON' : 'MUSIC: OFF');
   }
 
   resume() {

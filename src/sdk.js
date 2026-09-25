@@ -93,3 +93,32 @@ export function midgameAd(done) {
     finish();
   }
 }
+
+/**
+ * Jutalomvideó (pl. megoldás megmutatása előtt). Kikapcsolt SDK-nál azonnal jutalmaz.
+ * @param {() => void} onReward ha a videó végigment (vagy placeholder)
+ * @param {() => void} [onSkip] ha a videó nem ment végig / hiba
+ */
+export function rewardedAd(onReward, onSkip = () => {}) {
+  const s = sdk();
+  if (!s || !s.ad || !s.ad.requestAd) {
+    log('rewardedAd (placeholder: reward granted)');
+    onReward();
+    return;
+  }
+  try {
+    s.ad.requestAd('rewarded', {
+      adStarted: () => state.onAdMute?.(),
+      adFinished: () => {
+        state.onAdUnmute?.();
+        onReward();
+      },
+      adError: () => {
+        state.onAdUnmute?.();
+        onSkip();
+      }
+    });
+  } catch {
+    onSkip();
+  }
+}

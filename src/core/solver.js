@@ -151,7 +151,8 @@ export function runSolution(level, solution) {
       };
     } else {
       roundFrames.push(world.frame);
-      return { ok: true, ghosts, frames: world.frame, rounds: r + 1, roundFrames };
+      // a győztes kör inputjai: ebből játszható vissza a teljes megoldás (szellemekkel együtt)
+      return { ok: true, ghosts, frames: world.frame, rounds: r + 1, roundFrames, finalInputs: Uint8Array.from(world.liveInputs) };
     }
   }
   return { ok: false, reason: 'unreachable', ghosts, frames: 0, rounds: 0 };

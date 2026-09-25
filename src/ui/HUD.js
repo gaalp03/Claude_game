@@ -130,7 +130,7 @@ export class HUD {
     s.tweens.add({ targets: c, alpha: 0, y: c.y - 16, delay: 1500, duration: 450, onComplete: () => c.destroy() });
   }
 
-  update({ remaining, limit, ghosts, loop, ready }, dt = 16) {
+  update({ remaining, limit, ghosts, loop, ready, recs = null, frame = 0, frameLimit = 1 }, dt = 16) {
     this.t += dt / 1000;
     const g = this.g;
     const gl = this.glow;
@@ -180,5 +180,22 @@ export class HUD {
       }
     }
     this.ghostLabel.setText(`GHOSTS ${ghosts} / PAR ${this.par}`);
+
+    // szellem-idővonal: meddig tart az egyes szellemek felvétele, és hol tart most a kör
+    if (recs && recs.length) {
+      const w = 100;
+      const x = VIEW_W - 58 - w;
+      const y0 = 52;
+      for (let i = 0; i < recs.length; i++) {
+        const y = y0 + i * 6;
+        g.fillStyle(0x1a1f4a, 0.9);
+        g.fillRect(x, y, w, 3);
+        g.fillStyle(COLORS.ghost, ghostAlpha(i, recs.length) + 0.25);
+        g.fillRect(x, y, (w * Math.min(recs[i], frameLimit)) / frameLimit, 3);
+      }
+      const cx = x + (w * Math.min(frame, frameLimit)) / frameLimit;
+      g.fillStyle(0xffffff, 0.9);
+      g.fillRect(cx - 0.75, y0 - 2, 1.5, recs.length * 6 + 1);
+    }
   }
 }

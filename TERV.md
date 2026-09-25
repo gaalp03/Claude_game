@@ -110,6 +110,14 @@ Mezők: `id, name, hint, size, timeLimit, ghosts (par), spawn, goal, platforms, 
 - **Profil-képernyő:** kinézetválasztó, achievement-lista, statisztikák (körök, szellemek, esések).
 - **HUD:** a pályanév mellett a már megszerzett csillagok, az időzítő alatt az arany célidő.
 
+## Játék közbeni segítők (3. kör)
+
+- **Szellem-előnézet:** a kör indulása előtt halvány pontsor mutatja a szellemek útját, és körvonal jelzi, hol állnak meg a felvételük végén. Egy külön, álló élő játékossal futtatott szimuláció adja (a világ determinisztikus, ezért pontos). **A tervezést segíti anélkül, hogy megoldaná a feladványt.**
+- **Szellem-idővonal a HUD-on:** szellemenként egy sáv mutatja, meddig tart a felvétele, egy kurzor pedig azt, hol tart a kör – így látszik, mikor „áll le” egy szellem.
+- **Visszatekerés-animáció:** rögzítéskor (lila) és halálnál/újraindításnál (a kinézet színében) a figura az útvonalán visszapörög a startra – a „hurok” téma vizuálisan is érződik.
+- **Megoldás-visszajátszás:** 3 kör után a szünetmenüben „SHOW SOLUTION”: a fejlesztői megoldás (szellemekkel együtt) lejátszódik, bármely gombbal átugorható, utána a játékos saját szellemei változatlanok. A megoldó ehhez eltárolja a győztes kör inputjait (`finalInputs`), a teszt igazolja, hogy a visszajátszás képkockára nyer. 5 sikertelen kör után a kezdőfelirat is jelzi a lehetőséget. **Elakadásnál ez tartja meg a játékost ahelyett, hogy kilépne.** CrazyGames-en jutalomvideó elé köthető (`sdk.rewardedAd`, kikapcsolva azonnal indul).
+- **Eltérés a legjobb időhöz** az eredménykártyán (pl. „NEW BEST −0.23s” vagy „+0.40s vs best”).
+
 ## Zene
 
 **Generált synthwave (audio/music.js):** Am–F–C–G akkordmenet 104 BPM-en, lebegő pad, szűrt arpeggio visszhanggal; játék közben basszus, lábdob és cin is szól. Előretekintő ütemezéssel (25 ms-onként a következő 150 ms) pontos marad a ritmus; háttérbe tett lapon a hang szünetel; a zene külön kapcsolható.

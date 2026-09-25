@@ -42,7 +42,9 @@ export class WorldView {
     this.glow = scene.add.graphics().setBlendMode(Phaser.BlendModes.ADD);
     this.dyn = scene.add.graphics();
     this.fx = scene.add.graphics().setBlendMode(Phaser.BlendModes.ADD);
-    this.root.add([this.glow, this.dyn, this.fx]);
+    // a szellemek várható útja (csak a kör indulása előtt látszik)
+    this.previewG = scene.add.graphics().setVisible(false);
+    this.root.add([this.previewG, this.glow, this.dyn, this.fx]);
 
     this.emitters = {};
     const mk = (key, color, extra = {}) => {
@@ -95,6 +97,7 @@ export class WorldView {
 
     this.spots = [];
     this.spotsUsed = 0;
+    this.rewindAnim = null;
     this.diamond = [{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }];
     this.doorOpen = new Map(); // ajtó id → látható nyitottság 0..1
     this.squash = new Map(); // entitás index → {sx, sy}
@@ -113,6 +116,56 @@ export class WorldView {
 
   destroy() {
     this.root.destroy();
+  }
+
+  /**
+   * A szellemek várható útja (a kör indulása előtt): halvány pontsor és végpont-körvonal.
+   * A pályát egyszer rajzoljuk ki, és csak a "ready" állapotban tesszük láthatóvá.
+   * @param paths [{index, pts: [x,y,...]}] a szellemek bal felső sarkának pozíciói
+   */
+  setPreview(paths, count) {
+    const g = this.previewG;
+    g.clear();
+    this.hasPreview = !!(paths && paths.length);
+    if (!this.hasPreview) return;
+    for (const p of paths) {
+      const a = ghostAlpha(p.index, count);
+      const n = p.pts.length / 2;
+      for (let k = 0; k < n; k += 2) {
+        g.fillStyle(COLORS.ghost, Math.min(1, a * (0.5 + 0.8 * (k / n)) + 0.1));
+        g.fillRect(p.pts[k * 2] + 9.5, p.pts[k * 2 + 1] + 12.5, 3, 3);
+      }
+      // hol áll meg a szellem a felvétele végén
+      const ex = p.pts[(n - 1) * 2];
+      const ey = p.pts[(n - 1) * 2 + 1];
+      g.lineStyle(1.5, COLORS.ghost, Math.min(1, a + 0.25));
+      g.strokeRoundedRect(ex, ey, 22, 28, { tl: 10, tr: 10, bl: 2, br: 2 });
+    }
+  }
+
+  /** Visszatekerés: a figura az útvonalán visszapörög a startig (csak látvány) */
+  playRewind(track, color) {
+    if (!track || track.length < 4) return;
+    this.rewindAnim = { pts: track, color, t: 0, dur: Math.min(0.55, 0.25 + track.length / 2400) };
+  }
+
+  _drawRewind(fx, dt) {
+    const r = this.rewindAnim;
+    if (!r) return;
+    r.t += dt;
+    const k = Math.min(1, r.t / r.dur);
+    const n = r.pts.length / 2;
+    const ease = 1 - Math.pow(1 - k, 2);
+    const head = Math.max(0, Math.round((1 - ease) * (n - 1)));
+    // nyomvonal a már "visszatekert" szakaszon
+    for (let j = 0; j < 10; j++) {
+      const i = Math.min(n - 1, head + j * 2);
+      fx.fillStyle(r.color, 0.35 * (1 - j / 10) * (1 - k * 0.5));
+      fx.fillRect(r.pts[i * 2] + 6, r.pts[i * 2 + 1] + 8, 10, 12);
+    }
+    fx.lineStyle(2, r.color, 0.9 * (1 - k * 0.6));
+    fx.strokeRoundedRect(r.pts[head * 2], r.pts[head * 2 + 1], 22, 28, 5);
+    if (k >= 1) this.rewindAnim = null;
   }
 
   /**
@@ -391,6 +444,9 @@ export class WorldView {
         drawPlayer(g, gl, bx, by, w, h, { facing: e.facing, vx: e.vx, t, alpha: pulse, color: col });
       }
     }
+
+    this.previewG.setVisible(!!ready && !!this.hasPreview);
+    this._drawRewind(fx, dt);
 
     // a képkockában nem használt fénypöttyök elrejtése
     for (let i = this.spotsUsed; i < this.spots.length; i++) if (this.spots[i].visible) this.spots[i].setVisible(false);

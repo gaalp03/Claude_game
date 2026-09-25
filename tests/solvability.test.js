@@ -97,3 +97,16 @@ describe('shortcut finder sanity', () => {
     expect(findTrivialWin(level)).not.toBeNull();
   });
 });
+
+describe('solution replay', () => {
+  it('final inputs + solution ghosts reproduce the win exactly', async () => {
+    const { createWorld } = await import('../src/core/world.js');
+    for (const level of LEVELS) {
+      const res = runSolution(level, level.solution);
+      const w = createWorld(level, res.ghosts);
+      for (let f = 0; f < res.finalInputs.length && w.status === 'playing'; f++) w.step(res.finalInputs[f]);
+      expect(w.status, level.id).toBe('won');
+      expect(w.frame).toBe(res.frames);
+    }
+  });
+});

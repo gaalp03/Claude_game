@@ -46,6 +46,7 @@ Dying or running out of time restarts the loop without recording; your ghosts ar
 - **Levels** – 24 hand-made levels in two chapters. Chapter 1 teaches movement, single ghosts, then 2–3 layered ghosts; Chapter 2 (“Paradox”) adds shuttles, crushers, lifts, bridges and timing puzzles.
 - **Stars & medals** – every level has 3 stars (clear / par ghosts / gold time) and a medal (bronze → silver → gold → **Beat the Dev**). Your personal best runs alongside you as a golden PB ghost.
 - **Profile** – 7 unlockable skins, 16 achievements and lifetime stats.
+- **Helpers** – before each loop a dotted preview shows where your ghosts will go; a HUD timeline shows how long each ghost's recording lasts; after 3 loops the pause menu offers **SHOW SOLUTION** (replays the developer solution, skippable).
 - **Daily Loop** – a level generated from today's date (same for everyone), verified solvable by the simulation before it is served. Finish it to get a Wordle-style result to copy and share, and keep your daily streak.
 
 ## Project layout

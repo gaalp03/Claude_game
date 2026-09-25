@@ -136,10 +136,15 @@ export function showResult(scene, opts) {
   objs.push(mg, mt);
 
   const sub = [];
-  if (newBest) sub.push('NEW BEST');
+  // eltérés az előző legjobbhoz képest (ez hajtja a "még egyet" érzést)
+  const prev = opts.prevBest;
+  if (prev !== null && prev !== undefined) {
+    const d = frames - prev;
+    sub.push(d < 0 ? `NEW BEST  −${formatTime(-d)}s` : d === 0 ? 'tied your best' : `+${formatTime(d)}s vs best`);
+  } else if (newBest) sub.push('NEW BEST');
   else if (bestFrames) sub.push(`best ${formatTime(bestFrames)}s`);
   sub.push(`${ghosts} ghost${ghosts === 1 ? '' : 's'} · par ${par}`);
-  const subT = scene.add.text(VIEW_W / 2 - 16, top + 222, sub.join('   ·   '), textStyle(13, newBest ? COLORS.goal : COLORS.dim, { fontStyle: newBest ? 'bold' : undefined })).setOrigin(0.5).setDepth(D + 1);
+  const subT = scene.add.text(VIEW_W / 2 - 16, top + 222, sub.join('   ·   '), textStyle(13, newBest || (prev !== null && prev !== undefined && frames < prev) ? COLORS.goal : COLORS.dim, { fontStyle: newBest ? 'bold' : undefined })).setOrigin(0.5).setDepth(D + 1);
   objs.push(subT);
 
   // következő cél: ami még hiányzik
