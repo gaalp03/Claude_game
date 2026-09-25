@@ -23,6 +23,14 @@ npm run package   # production build → release/ghost-loop-crazygames.zip (inde
 
 Checked for Basic Launch: ~1.4 MB total (≈0.46 MB zipped), single `index.html` entry with relative `./assets/` paths (runs from any subfolder / iframe), auto-starts into its own menu, 16:9 letterboxed and centered at any window size, fully playable with keyboard, mouse or touch, no external requests, links, ads or accounts (the CrazyGames SDK hooks are compiled out while `SDK_ENABLED = false`). On phones held upright a neon “rotate your device” screen appears (the running loop pauses; “Play anyway” dismisses it). Note: the build uses ES modules, so open it over http(s) (`npm run preview`), not by double-clicking `index.html`.
 
+### Cover images
+
+```bash
+npm run covers    # covers/cover-landscape-1920x1080.png, cover-portrait-800x1200.png, cover-square-800x800.png
+```
+
+Drawn from code (canvas in headless Chromium via Playwright) in the game's own style and fonts. On a fresh machine run `npx playwright install chromium` once.
+
 ## Run on your LAN / Tailscale
 
 ```bash
