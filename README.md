@@ -21,7 +21,7 @@ npm run preview  # serve the production build locally
 npm run package   # production build → release/ghost-loop-crazygames.zip (index.html at the zip root)
 ```
 
-Checked for Basic Launch: ~1.4 MB total (≈0.46 MB zipped), single `index.html` entry with relative `./assets/` paths (runs from any subfolder / iframe), auto-starts into its own menu, 16:9 letterboxed and centered at any window size, fully playable with keyboard, mouse or touch, no external requests, links, ads or accounts (the CrazyGames SDK hooks are compiled out while `SDK_ENABLED = false`). On phones held upright a neon “rotate your device” screen appears (the running loop pauses; “Play anyway” dismisses it). Note: the build uses ES modules, so open it over http(s) (`npm run preview`), not by double-clicking `index.html`.
+Checked for Basic Launch: ~1.4 MB total (≈0.46 MB zipped), single `index.html` entry with relative `./assets/` paths (runs from any subfolder / iframe), auto-starts into its own menu, 16:9 letterboxed and centered at any window size, fully playable with keyboard, mouse or touch, no links, ads or accounts; the only external request is the official CrazyGames SDK v3 script, used just for saving (Data Module). On phones held upright a neon “rotate your device” screen appears (the running loop pauses; “Play anyway” dismisses it). Note: the build uses ES modules, so open it over http(s) (`npm run preview`), not by double-clicking `index.html`.
 
 ### Cover images
 
@@ -74,7 +74,7 @@ src/render/    WorldView – draws the simulation
 src/scenes/    Boot, Menu, LevelSelect, Game, Daily, Profile
 src/ui/        HUD, touch controls, buttons, panels, theme
 src/audio/     WebAudio synth sound effects
-src/sdk.js     CrazyGames SDK call points (disabled placeholders)
+src/sdk.js     CrazyGames SDK: Data Module on, ads/events off
 tests/         vitest suites
 scripts/       level verification, tracing, timing search (solve-timing) and daily stats CLI tools
 ```
@@ -83,4 +83,14 @@ Design decisions (in Hungarian) are in [TERV.md](TERV.md).
 
 ## CrazyGames SDK
 
-`src/sdk.js` wires `loadingStart/Stop`, `gameplayStart/Stop`, `happytime` and `midgameAd` into the game but keeps them disabled (`SDK_ENABLED = false`). To go live: add the CrazyGames SDK v3 script tag to `index.html` and set the flag to `true`.
+`index.html` loads the official SDK v3 script (`https://sdk.crazygames.com/crazygames-sdk-v3.js`). `src/sdk.js` has one switch per feature:
+
+| Switch | Default | What it covers |
+| --- | --- | --- |
+| `SDK_DATA_ENABLED` | `true` | progress saving via the **Data Module** |
+| `SDK_ADS_ENABLED` | `false` | `midgameAd`, `rewardedAd` (placeholders resolve instantly) |
+| `SDK_EVENTS_ENABLED` | `false` | `loadingStart/Stop`, `gameplayStart/Stop`, `happytime` |
+
+**Saving** (`src/core/save-sync.js`): the game always boots instantly from `localStorage`. When the SDK is initialised and `SDK.environment === 'crazygames'`, the Data Module is attached: cloud and local saves are merged (best time, fewest ghosts, stars and medals, daily history/streak, stats, achievements, PB ghosts – the better result wins on every field), written back to both, and any open menu refreshes. From then on every save goes to both stores. Anywhere else (localhost, Tailscale, offline, `environment` `local`/`disabled`, init error or timeout, Data Module disabled on the portal) it simply stays on `localStorage`. To try the real SDK locally in its `local` environment, add `?cgdata=1` to the URL.
+
+Portal answer for *“Does your game save progress?”*: **Yes, using the Data Module from the CrazyGames SDK.**

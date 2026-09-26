@@ -27,7 +27,7 @@ src/
   scenes/      BootScene, MenuScene, LevelSelectScene, GameScene, DailyScene
   ui/          HUD, panelek, gombok, érintős vezérlés, téma, áttűnések
   audio/       sfx.js – WebAudio szintetizátor
-  sdk.js       CrazyGames SDK hívási pontok (kikapcsolva)
+  sdk.js       CrazyGames SDK: Data Module be, reklám/események ki
   state.js     mentés-példány és hangbeállítás
 tests/         vitest: replay, betöltő, megoldhatóság, napi generátor, mentés/megosztás
 scripts/       verify-levels.mjs (parancssori ellenőrzés), trace.mjs, daily-stats.mjs
@@ -161,11 +161,23 @@ Mezők: `id, name, hint, size, timeLimit, ghosts (par), spawn, goal, platforms, 
 
 ## Mentés
 
-`localStorage` (`ghostloop.save.v1`): pályánként teljesítve, legjobb idő, legkevesebb szellem, legkevesebb kör; napi sorozat, legjobb sorozat, napi eredmények; hangbeállítás. **Minden hozzáférés try/catch-ben** – privát módban vagy tiltott tárolónál is fut a játék, csak nem ment.
+Tartalma (`ghostloop.save.v1`): pályánként teljesítve, legjobb idő, legkevesebb szellem, legkevesebb kör, csillagok, érem; napi sorozat, legjobb sorozat, napi eredmények; kinézet, hang- és képbeállítás; statisztikák; achievementek. A PB-szellemek külön kulcson (`ghostloop.pb.v1`). **Minden hozzáférés try/catch-ben** – privát módban vagy tiltott tárolónál is fut a játék, csak nem ment.
+
+**Két tároló, egy mentés** (`src/core/save-sync.js`):
+- Indulás mindig azonnal a `localStorage`-ból – a játék soha nem vár a hálózatra (a Boot legfeljebb ~1,2 s-ot ad az SDK-nak, aztán megy tovább).
+- Ha a CrazyGames SDK inicializált és `environment === 'crazygames'`, a Data Module-t (a `localStorage`-éval azonos getItem/setItem API) „rákötjük”: a felhős és a helyi mentést **egyesítjük**, az eredményt mindkét helyre visszaírjuk, a memóriabeli mentés helyben frissül, a nyitott menü újrarajzolódik. Onnantól minden írás mindkét helyre megy (a helyi tükör gyors indítás és offline tartalék).
+- Egyesítési szabály (`mergeSaves`, tiszta függvény): pálya teljesítve = VAGY; legjobb idő / legkevesebb szellem / kör = minimum; csillag = bitenkénti VAGY; érem = a magasabb; napi eredmények uniója (azonos napon a gyorsabb); sorozat a később játszott forrásé, legjobb sorozat = max; statisztika = max; achievement = unió (a korábbi időponttal); beállítások a frissebben mentett forrásé, kivéve a képminőséget (`lowFx`), ami eszközfüggő. PB-szellemből annak a forrásnak a futása marad, amelyiké a jobb idő (`mergePB`).
+- Visszaesés `localStorage`-ra: nincs SDK (helyi teszt, Tailscale, offline), `local`/`disabled` környezet, init-hiba vagy 8 s-os időtúllépés, a portálon kikapcsolt Data Module (`dataModuleDisabled`), felhő-írási hiba. `?cgdata=1` URL-paraméterrel a valódi SDK `local` környezetében is kipróbálható.
+- Ismert korlát: ha ugyanazon a böngészőn fiókot vált valaki, a helyi tükör beolvad az új fiókba (kis kockázat, cserébe semmi sem vész el).
 
 ## CrazyGames SDK
 
-`src/sdk.js`: `loadingStart/Stop` (Boot), `gameplayStart` (pálya indul, szünet vége), `gameplayStop` (szünet, győzelem, menük), `happytime` (első teljesítés, napi megoldás), `midgameAd` (minden 3. teljesített pálya után a "Next" gombnál). **`SDK_ENABLED = false`**: a hívások helyi placeholderek, a reklám-callback azonnal továbbenged, így nincs hálózati hívás. Élesítés: SDK v3 script tag az `index.html`-be és `SDK_ENABLED = true`.
+Az `index.html` a hivatalos SDK v3 scriptet tölti be (npm-csomag nincs). `src/sdk.js` funkciónként külön kapcsolóval:
+- **`SDK_DATA_ENABLED = true`** – mentés a Data Module-lal (lásd fent). Portál-válasz: „Does your game save progress?” → **Yes, using the Data Module from the CrazyGames SDK**.
+- **`SDK_ADS_ENABLED = false`** – `midgameAd` (minden 3. teljesített pálya után a „Next”-nél), `rewardedAd` (megoldás megmutatása előtt); kikapcsolva a callback azonnal továbbenged.
+- **`SDK_EVENTS_ENABLED = false`** – `loadingStart/Stop` (Boot), `gameplayStart/Stop` (pálya indul / szünet, győzelem, menük), `happytime` (első teljesítés, napi megoldás).
+
+Az `init()` soha nem dob és legkésőbb 8 s alatt lefut; a hívási pontok a helyükön vannak, élesítésükhöz elég a kapcsolót átbillenteni.
 
 ## Teljesítmény és méret
 
@@ -186,6 +198,7 @@ Mezők: `id, name, hint, size, timeLimit, ghosts (par), spawn, goal, platforms, 
 - **pályabetöltő**: minden pálya betölt, a nehézségi görbe (0-0-0, 1-1-1, 2+…), időkeretek, mértékegység-átváltás, 10 féle hibás bemenet elutasítása.
 - **megoldhatóság**: mind a 12 pálya megoldása lefut a par szellemszámmal; szellemes pályák szellem nélkül nem mennek; nincs futás-ugrás rövidítés; a napi generátor egy teljes évre igazolt pályát ad tartalék nélkül; determinisztikus; minden sablon működik.
 - **mentés/megosztás**: rekordok, sorozat (hónapváltással), sérült mentés, emojisor.
+- **felhőmentés** (`save-sync.test.js`, szimulált CrazyGames SDK-val): mentés–betöltés kör a Data Module-on át (második eszköz üres localStorage-dzsal mindent visszakap, a PB-szellemekkel együtt); visszaesés localStorage-ra SDK nélkül, init-hibánál, lefagyó init-nél (időtúllépés), `disabled`/`local` környezetben és kikapcsolt Data Module-nál; lassan érkező felhő egyesítése a közben elért helyi eredményekkel (mindenből a jobb marad, utána mindkét tárolóban ugyanaz); felhő-írási hiba mellett is ment helyben; kikapcsolt reklám/események az élő SDK mellett sem hívódnak; `mergeSaves`/`mergePB` szabályai.
 
 Ezen felül fejlesztés közben Playwright-tal a valódi GameScene-ben is lefutott mind a 12 megoldás, képkockára ugyanazzal az eredménnyel, mint a szimulátorban.
 
@@ -200,7 +213,7 @@ Ezen felül fejlesztés közben Playwright-tal a valódi GameScene-ben is lefuto
 7. ✅ Hangok
 8. ✅ Daily Loop és megosztható eredmény
 9. ✅ Effektek, átmenetek, időkeretek hangolása
-10. ✅ SDK hívási pontok (kikapcsolva), production build
+10. ✅ SDK hívási pontok, production build; mentés a CrazyGames Data Module-lal (reklám és események még kikapcsolva)
 
 ## Második kör (bővítés)
 

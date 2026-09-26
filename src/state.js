@@ -1,13 +1,37 @@
 // Alkalmazás-szintű állapot: a mentés egyetlen példánya és a hangbeállítás.
-import { loadSave, writeSave } from './core/save.js';
+// A mentés a helyi tárolóból indul; CrazyGames-en a Data Module megérkezése után
+// (BootScene → app.attachCloud) egyesítve a felhőbe is ír.
+import { writeSave, loadPB, savePB, safeStorage } from './core/save.js';
+import { createSaveSync } from './core/save-sync.js';
 import { sfx } from './audio/sfx.js';
 import { music } from './audio/music.js';
 import { QUALITY } from './ui/theme.js';
 
+const sync = createSaveSync({ local: safeStorage() });
+
 export const app = {
-  save: loadSave(),
+  sync,
+  save: sync.load(),
+  /** a felhő-adat beolvasztása után hívódik (a menük frissítéséhez) */
+  onCloudUpdate: null,
   persist() {
-    writeSave(this.save);
+    writeSave(this.save, sync.storage);
+  },
+  loadPB(id) {
+    return loadPB(id, sync.storage);
+  },
+  savePB(id, encoded) {
+    return savePB(id, encoded, sync.storage);
+  },
+  /** A Data Module megjött: egyesítés, a beállítások újra alkalmazása, értesítés */
+  attachCloud(cloud) {
+    const changed = sync.attach(cloud, this.save);
+    if (changed) {
+      sfx.setMuted(this.save.settings.muted);
+      music.setEnabled(this.save.settings.music !== false);
+    }
+    this.onCloudUpdate?.(changed);
+    return changed;
   },
   toggleMute() {
     this.save.settings.muted = !this.save.settings.muted;

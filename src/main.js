@@ -13,6 +13,7 @@ import { DailyScene } from './scenes/DailyScene.js';
 import { ProfileScene } from './scenes/ProfileScene.js';
 import { VIEW_W, VIEW_H, RENDER_SCALE, COLORS, IS_TOUCH_DEVICE } from './ui/theme.js';
 import { sfx } from './audio/sfx.js';
+import { app } from './state.js';
 
 const game = new Phaser.Game({
   type: Phaser.AUTO,
@@ -64,6 +65,18 @@ document.getElementById('rotate-dismiss')?.addEventListener('click', () => {
   applyOrientation();
 });
 applyOrientation();
+
+// Ha a felhőmentés (Data Module) a menü megjelenése után érkezik, az épp látható menüt
+// újrarajzoljuk az egyesített adattal. Futó pályát nem szakítunk meg.
+app.onCloudUpdate = (changed) => {
+  if (!changed) return;
+  for (const key of ['Menu', 'LevelSelect', 'Profile', 'Daily']) {
+    const scene = game.scene.getScene(key);
+    if (!scene || !game.scene.isActive(key) || scene._leaving) continue;
+    if (key === 'Daily' && scene.result) continue; // friss napi eredmény képernyője maradjon
+    scene.scene.restart(key === 'LevelSelect' ? { chapter: scene.chapter } : undefined);
+  }
+};
 
 // hibakereséshez a böngésző konzolból elérhető
 // (VITE_EXPOSE_GAME=1 csak az automata ellenőrző buildhez; a feltöltött buildben nincs benne)

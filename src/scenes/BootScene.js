@@ -2,6 +2,7 @@
 import Phaser from 'phaser';
 import * as sdk from '../sdk.js';
 import { sfx } from '../audio/sfx.js';
+import { app } from '../state.js';
 import { setupCamera } from '../ui/theme.js';
 
 export class BootScene extends Phaser.Scene {
@@ -45,10 +46,19 @@ export class BootScene extends Phaser.Scene {
           new Promise((r) => setTimeout(r, 2000))
         ]).catch(() => {})
       : Promise.resolve();
-    Promise.all([fonts, sdk.init({ onAdMute: () => sfx.setAdMuted(true), onAdUnmute: () => sfx.setAdMuted(false) })])
-      .finally(() => {
-        sdk.loadingStop();
-        this.scene.start('Menu');
-      });
+    // SDK: a Data Module (felhőmentés) az init után érhető el. Legfeljebb ~1.2 s-ot várunk rá,
+    // utána a játék mindenképp a helyi mentéssel indul, és a felhő-adat később olvad be.
+    const sdkReady = sdk
+      .init({ onAdMute: () => sfx.setAdMuted(true), onAdUnmute: () => sfx.setAdMuted(false) })
+      .then(() => {
+        const cloud = sdk.dataStorage();
+        if (cloud) app.attachCloud(cloud);
+      })
+      .catch(() => {});
+    const sdkWait = Promise.race([sdkReady, new Promise((r) => setTimeout(r, 1200))]);
+    Promise.all([fonts, sdkWait]).finally(() => {
+      sdk.loadingStop();
+      this.scene.start('Menu');
+    });
   }
 }

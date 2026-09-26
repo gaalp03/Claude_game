@@ -6,7 +6,7 @@ import { createWorld } from '../core/world.js';
 import { runSolution } from '../core/solver.js';
 import { loadLevel } from '../core/level-loader.js';
 import { STEP_MS, IN_LEFT, IN_RIGHT, IN_JUMP } from '../core/physics.js';
-import { recordLevel, loadPB, savePB } from '../core/save.js';
+import { recordLevel } from '../core/save.js';
 import { encodeTrack, decodeTrack, TRACK_STEP } from '../core/replay.js';
 import { starMaskFor, medalFor, recordStars, totalStars, checkAchievements, skinById, SKINS } from '../core/progress.js';
 import { LEVELS, CHAPTERS, MAX_STARS } from '../levels/index.js';
@@ -61,7 +61,7 @@ export class GameScene extends Phaser.Scene {
     addCameraFX(this);
     this.backdrop = new Backdrop(this, { seed: hashString(this.level.id) });
     const levelMode = this.mode === 'level';
-    const pb = levelMode ? decodeTrack(loadPB(this.level.id)) : null;
+    const pb = levelMode ? decodeTrack(app.loadPB(this.level.id)) : null;
     const prev = levelMode ? app.save.levels[this.level.id] : null;
     this.skinColor = skinById(app.save.settings.skin).color;
     if (this.skinColor === 'prism') this.skinColor = COLORS.live;
@@ -433,7 +433,7 @@ export class GameScene extends Phaser.Scene {
     const mask = starMaskFor({ frames, ghosts }, level.ghosts, level.devFrames);
     const medal = medalFor(frames, level.devFrames);
     recordStars(app.save, id, mask, medal);
-    if (rec.newTime) savePB(id, encodeTrack(this.track));
+    if (rec.newTime) app.savePB(id, encodeTrack(this.track));
     app.persist();
     app.levelsCompletedThisSession++;
     if (rec.firstClear) sdk.happytime();
