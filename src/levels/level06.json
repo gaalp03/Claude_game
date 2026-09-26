@@ -1,0 +1,82 @@
+{
+  "id": "level06",
+  "name": "Lift Off",
+  "hint": "Buttons also power lifts. Timing matters: a ghost can wait before pressing.",
+  "size": {
+    "w": 32,
+    "h": 18
+  },
+  "timeLimit": 12,
+  "ghosts": 1,
+  "spawn": {
+    "x": 3,
+    "y": 16
+  },
+  "goal": {
+    "x": 29,
+    "y": 7
+  },
+  "platforms": [
+    {
+      "x": 0,
+      "y": 16,
+      "w": 20,
+      "h": 2
+    },
+    {
+      "x": 23,
+      "y": 16,
+      "w": 9,
+      "h": 2
+    },
+    {
+      "x": 23,
+      "y": 7,
+      "w": 9,
+      "h": 1
+    }
+  ],
+  "hazards": [
+    {
+      "x": 23,
+      "y": 15.5,
+      "w": 9,
+      "h": 0.5
+    }
+  ],
+  "buttons": [
+    {
+      "id": "b1",
+      "x": 7,
+      "y": 16,
+      "w": 1.5
+    }
+  ],
+  "movers": [
+    {
+      "id": "m1",
+      "x": 20,
+      "y": 16,
+      "w": 3,
+      "h": 0.5,
+      "to": {
+        "x": 20,
+        "y": 7
+      },
+      "speed": 4,
+      "button": "b1"
+    }
+  ],
+  "solution": [
+    [
+      "T150",
+      "@7.75",
+      "W5"
+    ],
+    [
+      "@21.5",
+      "Wo:m1",
+      "@29"
+    ]
+  ]
+}

@@ -1,0 +1,83 @@
+// Belépési pont: Phaser játék konfigurálása és a jelenetek regisztrálása.
+import Phaser from 'phaser';
+// betűk a buildbe csomagolva (csak latin karakterkészlet, kis méret)
+import '@fontsource/orbitron/latin-700.css';
+import '@fontsource/orbitron/latin-900.css';
+import '@fontsource/exo-2/latin-500.css';
+import '@fontsource/exo-2/latin-700.css';
+import { BootScene } from './scenes/BootScene.js';
+import { MenuScene } from './scenes/MenuScene.js';
+import { LevelSelectScene } from './scenes/LevelSelectScene.js';
+import { GameScene } from './scenes/GameScene.js';
+import { DailyScene } from './scenes/DailyScene.js';
+import { ProfileScene } from './scenes/ProfileScene.js';
+import { VIEW_W, VIEW_H, RENDER_SCALE, COLORS, IS_TOUCH_DEVICE } from './ui/theme.js';
+import { sfx } from './audio/sfx.js';
+import { app } from './state.js';
+
+const game = new Phaser.Game({
+  type: Phaser.AUTO,
+  parent: 'game',
+  width: VIEW_W * RENDER_SCALE,
+  height: VIEW_H * RENDER_SCALE,
+  backgroundColor: COLORS.bg,
+  banner: false,
+  scale: {
+    mode: Phaser.Scale.FIT, // 16:9, a képernyőhöz igazítva
+    autoCenter: Phaser.Scale.CENTER_BOTH
+  },
+  render: {
+    antialias: true,
+    powerPreference: 'high-performance'
+  },
+  input: { activePointers: 4 },
+  // a hangot a saját WebAudio szintetizátor adja: a Phaser ne nyisson második AudioContextet
+  audio: { noAudio: true },
+  // telefonon 120 Hz-es kijelzőn se rajzoljunk feleslegesen dupla képkockát
+  fps: IS_TOUCH_DEVICE ? { limit: 60 } : {},
+  disableContextMenu: true,
+  scene: [BootScene, MenuScene, LevelSelectScene, GameScene, DailyScene, ProfileScene]
+});
+
+// háttérbe tett lapon a hang is álljon meg (a Phaser a ciklust magától szünetelteti)
+document.addEventListener('visibilitychange', () => {
+  if (!sfx.ctx) return;
+  if (document.hidden) sfx.ctx.suspend().catch(() => {});
+  else sfx.ctx.resume().catch(() => {});
+});
+
+// Álló telefon: "fordítsd el" képernyő, és a futó kör szünetel. Fekvőre fordítva eltűnik;
+// a "PLAY ANYWAY" gombbal elrejthető a következő fordításig.
+let rotateDismissed = false;
+let wasPortrait = null;
+function applyOrientation() {
+  const portrait = IS_TOUCH_DEVICE && window.innerHeight > window.innerWidth;
+  if (portrait !== wasPortrait) rotateDismissed = false;
+  wasPortrait = portrait;
+  const show = portrait && !rotateDismissed;
+  document.body.classList.toggle('show-rotate', show);
+  if (show) game.events.emit('portrait-block');
+}
+window.addEventListener('resize', applyOrientation);
+window.addEventListener('orientationchange', applyOrientation);
+document.getElementById('rotate-dismiss')?.addEventListener('click', () => {
+  rotateDismissed = true;
+  applyOrientation();
+});
+applyOrientation();
+
+// Ha a felhőmentés (Data Module) a menü megjelenése után érkezik, az épp látható menüt
+// újrarajzoljuk az egyesített adattal. Futó pályát nem szakítunk meg.
+app.onCloudUpdate = (changed) => {
+  if (!changed) return;
+  for (const key of ['Menu', 'LevelSelect', 'Profile', 'Daily']) {
+    const scene = game.scene.getScene(key);
+    if (!scene || !game.scene.isActive(key) || scene._leaving) continue;
+    if (key === 'Daily' && scene.result) continue; // friss napi eredmény képernyője maradjon
+    scene.scene.restart(key === 'LevelSelect' ? { chapter: scene.chapter } : undefined);
+  }
+};
+
+// hibakereséshez a böngésző konzolból elérhető
+// (VITE_EXPOSE_GAME=1 csak az automata ellenőrző buildhez; a feltöltött buildben nincs benne)
+if (import.meta.env.DEV || import.meta.env.VITE_EXPOSE_GAME) window.__game = game;
